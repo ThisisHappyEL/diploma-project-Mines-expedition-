@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Litho-Survival: Battle</title>
+    <style>
+        body { background: #1a1612; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #e0d8c3; font-family: sans-serif; }
+        #game-container { position: relative; width: 1000px; height: 600px; }
+        canvas { border: 2px solid #3d352e; background: #000; position: absolute; top: 0; left: 0; }
+        
+        #ui-layer { position: absolute; bottom: 0; left: 0; width: 100%; height: 180px; background: rgba(30, 25, 20, 0.9); border-top: 2px solid #ffbf00; display: flex; padding: 10px; box-sizing: border-box; gap: 10px; }
+        #turn-info { flex: 0 0 150px; font-size: 16px; color: #ffbf00; }
+        
+        /* Изменения здесь: flex-wrap позволяет кнопкам падать на 2-ю строку */
+        #skills-panel { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start; }
+        #log-panel { flex: 0 0 250px; font-size: 12px; overflow-y: auto; border-left: 1px solid #555; padding-left: 10px; color: #aaa; }
+        
+        .skill-btn { background: #3d352e; color: #fff; border: 1px solid #888; padding: 5px 8px; cursor: pointer; border-radius: 4px; font-size: 12px; height: 45px; }
+        .skill-btn:hover:not(:disabled) { background: #ffbf00; color: #000; }
+        .skill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="battleCanvas" width="1000" height="600"></canvas>
+        <div id="ui-layer">
+            <div id="turn-info">Ход: Загрузка...</div>
+            <div id="skills-panel"></div>
+            <div id="log-panel" id="battle-log">Добро пожаловать в недра.</div>
+        </div>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
