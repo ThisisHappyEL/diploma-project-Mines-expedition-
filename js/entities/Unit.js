@@ -1,4 +1,4 @@
-import { EFFECTS } from './effects.js';
+import { EFFECTS } from '../data/effects.js';
 
 export class Unit {
     constructor(config) {
@@ -13,16 +13,14 @@ export class Unit {
         this.width = 80;
         this.height = 120;
         this.targetX = 0; 
-        this.offsetX = 0; // Для рывков при атаке/уроне
+        this.offsetX = 0;
         
         this.isDead = false;
-        this.skills = config.skills || []; // Для врагов
-        this.activeEffects = []; // Хранилище жетонов
+        this.skills = config.skills || [];
+        this.activeEffects = [];
     }
 
-    // Добавление эффекта
     addEffect(effectConfig, count = 1) {
-        // Проверка: Ошеломление + Слабость = Оглушение
         if (effectConfig.id === 'weakness' && this.hasEffect('daze')) {
             this.removeEffect('daze'); this.addEffect(EFFECTS.STUN); return;
         }
@@ -30,19 +28,16 @@ export class Unit {
             this.removeEffect('weakness'); this.addEffect(EFFECTS.STUN); return;
         }
 
-        // Добавляем эффект в массив (если он уже есть, можно либо стакать, либо обновлять duration - пока стакаем как жетоны)
         for (let i = 0; i < count; i++) {
             this.activeEffects.push({ ...effectConfig });
         }
         return `Получил: ${effectConfig.name}`;
     }
 
-    // Проверка наличия эффекта
     hasEffect(effectId) {
         return this.activeEffects.some(e => e.id === effectId);
     }
 
-    // Удаление одного жетона эффекта (например, после удара снимается 1 Уклонение)
     removeEffect(effectId) {
         const index = this.activeEffects.findIndex(e => e.id === effectId);
         if (index > -1) {
@@ -52,14 +47,11 @@ export class Unit {
         return false;
     }
 
-    // Очистка эффектов в начале/конце хода (для DOT-ов)
     tickEffects() {
-        // Собираем список уникальных ID эффектов, которые есть на юните
         const currentIds = [...new Set(this.activeEffects.map(e => e.id))];
         
         currentIds.forEach(id => {
             const effect = this.activeEffects.find(e => e.id === id);
-            // Если эффект имеет пометку duration (т.е. он временный, а не триггерный как Блок)
             if (effect && effect.duration !== undefined) {
                 this.removeEffect(id);
             }
@@ -68,7 +60,7 @@ export class Unit {
 
     takeDamage(amt) {
         this.hp -= amt;
-        this.offsetX = this.side === 'player' ? -20 : 20; // Отшатывается назад
+        this.offsetX = this.side === 'player' ? -20 : 20;
         if (this.hp <= 0) {
             this.hp = 0;
             this.isDead = true;
@@ -86,49 +78,43 @@ export class Unit {
         }
         
         this.x += (this.targetX - this.x) * 0.1;
-        this.offsetX *= 0.8; // Затухание рывка
+        this.offsetX *= 0.8;
     }
 
-    draw(ctx, isSelected, isPotentialTarget = false) { // Добавили аргумент сюда!
+    draw(ctx, isSelected, isPotentialTarget = false) {
         if (this.isDead) return;
         const drawX = this.x + this.offsetX;
 
-        // 1. ПОДСВЕТКА (Аура)
         if (isPotentialTarget) {
-            ctx.save(); // Сохраняем состояние контекста
+            ctx.save();
             ctx.shadowBlur = 15;
             ctx.shadowColor = this.side === 'player' ? '#4aa3df' : '#ff4444';
             ctx.strokeStyle = this.side === 'player' ? '#4aa3df' : '#ff4444';
             ctx.lineWidth = 4;
             ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
-            ctx.restore(); // Возвращаем назад (убирает тени для остальных)
+            ctx.restore();
         }
 
-        // 2. ТЕНЬ
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath();
         ctx.ellipse(drawX + this.width/2, this.y + this.height, 40, 10, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // 3. ТЕЛО
         ctx.fillStyle = this.side === 'player' ? '#4a90e2' : '#e24a4a';
         ctx.strokeStyle = isSelected ? '#ffbf00' : '#fff';
         ctx.lineWidth = isSelected ? 4 : 2;
         ctx.fillRect(drawX, this.y, this.width, this.height);
         ctx.strokeRect(drawX, this.y, this.width, this.height);
 
-        // 4. ПОЛОСКА ЗДОРОВЬЯ
         ctx.fillStyle = '#333';
         ctx.fillRect(drawX, this.y - 15, this.width, 6);
         ctx.fillStyle = '#ff4444';
         ctx.fillRect(drawX, this.y - 15, this.width * (this.hp / this.maxHp), 6);
         
-        // 5. ИМЯ
         ctx.fillStyle = '#fff';
         ctx.font = '14px Arial';
         ctx.fillText(`${this.name} [P${this.posIdx}]`, drawX, this.y - 25);
 
-        // 6. ЭФФЕКТЫ (Жетоны)
         if (this.activeEffects.length > 0) {
             let effectY = this.y - 45;
             let effectX = drawX;
@@ -142,7 +128,6 @@ export class Unit {
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 16px Arial';
             for (let [icon, count] of Object.entries(displayEffects)) {
-                // Всегда рисуем иконку и количество жетонов под ней
                 ctx.fillText(icon, effectX, effectY);
                 ctx.font = '10px Arial';
                 ctx.fillText(count, effectX + 12, effectY + 5);

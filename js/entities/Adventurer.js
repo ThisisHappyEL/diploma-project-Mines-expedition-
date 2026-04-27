@@ -1,54 +1,52 @@
-import { Unit } from './Unit.js';
-import { BACKGROUNDS } from './backgrounds.js';
+import { Unit } from '../../templates/Unit.js';
+import { BACKGROUNDS } from '../../templates/backgrounds.js';
+import { SWORD_SKILLS } from '../../templates/weaponSkills/swordSkills.js';
 
-// ТА САМАЯ ГРАНИТНАЯ БАЗА
 const BASE_HP = 40;
+
+function getSkillByLevel(skillBase, weaponLevel, defaultData) {
+    const levelKey = `level${weaponLevel}`;
+    const levelData = skillBase[levelKey] || {};
+    
+    return { ...defaultData, ...skillBase, ...levelData };
+}
 
 export class Adventurer extends Unit {
     constructor(name, backgroundKey, posIdx) {
         const bg = BACKGROUNDS[backgroundKey];
         
-        // Временно создаем бойца с голой базой (40 ХП)
         super({ name, side: 'player', posIdx, hp: BASE_HP, maxHp: BASE_HP });
         
         this.background = backgroundKey;
         this.level = 1;
         this.exp = 0;
 
-        // Базовые статы от предыстории (тут лежат +5 ХП от шахтёра и т.д.)
         this.baseStats = { ...bg.stats };
         
         this.traits = [];
         this.equipment = { leftHand: null, rightHand: null, body: null };
 
-        // Пересчитываем здоровье с учетом бонусов предыстории и лечим до полного
         this.recalculateMaxHp();
         this.hp = this.maxHp; 
     }
 
-    // Функция пересчета максимального здоровья
     recalculateMaxHp() {
         let bonusHp = 0;
 
-        // 1. Модификатор от предыстории
         if (this.baseStats.hp) bonusHp += this.baseStats.hp;
 
-        // 2. Модификаторы от черт (Traits)
         this.traits.forEach(trait => {
             if (trait.effect && trait.effect.hp) bonusHp += trait.effect.hp;
         });
 
-        // 3. Модификаторы от снаряжения (например, брони)
         Object.values(this.equipment).forEach(item => {
             if (item && item.bonuses && item.bonuses.hp) {
                 bonusHp += item.bonuses.hp;
             }
         });
 
-        // Итоговое максимальное здоровье: База (40) + Все бонусы
         this.maxHp = BASE_HP + bonusHp;
 
-        // Убеждаемся, что текущее здоровье не превышает новый максимум
         if (this.hp > this.maxHp) {
             this.hp = this.maxHp;
         }
@@ -56,13 +54,11 @@ export class Adventurer extends Unit {
 
     get stats() {
         let finalStats = { ...this.baseStats };
-        // Применяем черты
         this.traits.forEach(trait => {
             for (let s in trait.effect) {
                 if (finalStats[s] !== undefined && s !== 'hp') finalStats[s] += trait.effect[s];
             }
         });
-        // Применяем экипировку
         Object.values(this.equipment).forEach(item => {
             if (item && item.bonuses) {
                 for (let s in item.bonuses) {
@@ -75,14 +71,29 @@ export class Adventurer extends Unit {
 
     equip(slot, item) {
         this.equipment[slot] = item;
-        // Пересчитываем ХП, так как мы могли надеть броню, дающую +20 ХП
         this.recalculateMaxHp();
     }
 
     getAvailableSkills() {
-        if (this.equipment.rightHand && this.equipment.rightHand.skills) {
-            return this.equipment.rightHand.skills;
-        }
-        return [];
+        const weapon = this.equipment.rightHand;
+        if (!weapon || !weapon.skills) return [];
+
+        const weaponLevel = weapon.level || 1;
+        const DEFAULT = weapon.defaultSkillData || {};
+
+        return weapon.skills
+            .filter(skillBase => weaponLevel >= (skillBase.fromLevel || 1))
+            .map(skillBase => {
+                const levelData = skillBase[`level${weaponLevel}`] || {};
+                const mergedSkill = { 
+                    ...DEFAULT, 
+                    ...skillBase, 
+                    ...levelData 
+                };
+
+                for (let i = 1; i <= 4; i++) delete mergedSkill[`level${i}`];
+
+                return mergedSkill;
+            });
     }
 }

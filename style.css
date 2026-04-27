@@ -1,0 +1,198 @@
+/* --- ГЛОБАЛЬНЫЕ СБРОСЫ --- */
+* { box-sizing: border-box; } /* Это критично для правильных размеров */
+
+body { 
+    background: #1a1612; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh; 
+    margin: 0; 
+    color: #e0d8c3; 
+    font-family: 'Segoe UI', sans-serif; 
+    overflow: hidden;
+}
+
+#game-container { 
+    position: relative; 
+    width: 100vw; 
+    max-width: 1920px; 
+    aspect-ratio: 16 / 9; 
+    max-height: 100vh;
+    margin: auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8); 
+    overflow: hidden;
+}
+
+canvas { 
+    width: 100%; height: 100%; 
+    background: #000; position: absolute; 
+    top: 0; left: 0; 
+}
+
+/* --- СИСТЕМНЫЕ КЛАССЫ --- */
+.hidden { display: none !important; }
+.ui-layer { 
+    position: absolute; 
+    width: 100%; height: 100%; 
+    pointer-events: none; /* Слой сам по себе не ловит клики */
+    z-index: 10;
+}
+.interactive { 
+    pointer-events: auto; /* А элементы внутри него — ловят */
+}
+
+/* --- ВЕРХНЯЯ ПАНЕЛЬ --- */
+#top-bar { 
+    position: absolute; 
+    top: 0; left: 0; width: 100%; height: 40px; 
+    background: rgba(20, 15, 10, 0.9); 
+    border-bottom: 2px solid #555; 
+    display: flex; align-items: center; padding: 0 20px; 
+    justify-content: space-between; z-index: 100; 
+}
+
+/* --- ОБЩИЕ КНОПКИ --- */
+.hub-btn { 
+    background: #3d352e; color: #e0d8c3; border: 1px solid #888; 
+    padding: 10px; cursor: pointer; text-align: left; 
+    font-size: 14px; transition: 0.2s;
+}
+.hub-btn:hover { background: #5d5044; border-color: #ffbf00; color: #ffbf00; }
+
+/* --- ХАБ И ЗДАНИЯ --- */
+#ui-hub { display: flex; padding: 60px 20px 20px 20px; box-sizing: border-box; height: 100%; gap: 20px; }
+#hub-menu { width: 300px; background: rgba(30, 25, 20, 0.95); border: 2px solid #ffbf00; padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+
+#building-ui { flex: 1; background: rgba(20, 15, 12, 0.95); border: 2px solid #aaa; display: flex; flex-direction: column; height: 100%; }
+.building-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-bottom: 2px solid #555; background: rgba(0,0,0,0.5); }
+.building-content { padding: 20px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 20px; align-content: flex-start; }
+
+.char-card { background: #2a241e; border: 1px solid #555; padding: 15px; width: 300px; flex-shrink: 0; }
+.char-card h3 { margin: 0 0 5px 0; color: #fff; }
+.char-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 13px; margin: 10px 0; }
+.char-card .salary { font-weight: bold; color: #ffbf00; text-align: right; }
+
+/* --- СЦЕНА ИССЛЕДОВАНИЯ (EXPLORE) --- */
+#ui-explore { color: white; display: flex; flex-direction: column; padding-top: 40px; }
+
+#explore-header { 
+    display: flex; align-items: center; gap: 30px; 
+    padding: 20px 40px; background: rgba(0,0,0,0.5); 
+}
+
+#explore-layout { 
+    display: flex; padding: 20px 40px; gap: 30px; 
+    flex: 1; /* Занимает всё оставшееся место */
+    overflow: hidden;
+}
+
+#explore-side { width: 350px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; }
+#explore-main { flex-grow: 1; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+
+.explore-card { background: rgba(0,0,0,0.6); border: 1px solid #444; padding: 15px; }
+
+.activity-row { background: rgba(255,255,255,0.05); border: 1px solid #444; padding: 15px 20px; border-radius: 4px; }
+.activity-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; position: relative; }
+.activity-label { display: flex; flex-direction: column; }
+.activity-stats { font-size: 12px; color: #aaa; font-family: monospace; }
+
+.progress-container { background: #111; height: 18px; border: 1px solid #333; width: 100%; overflow: hidden; position: relative; }
+.progress-fill { height: 100%; width: 0%; transition: width 0.4s ease-out; }
+
+/* Цвета полосок */
+.turquoise { background: #00ced1; }
+.yellow { background: #ffbf00; }
+.orange { background: #ff7f50; }
+.purple { background: #9370db; }
+.red { background: #ff4444; }
+
+.priority-btn { background: #333; color: #eee; border: 1px solid #555; cursor: pointer; padding: 5px 10px; font-size: 12px; }
+.priority-btn.active { background: #ffbf00; color: #000; font-weight: bold; }
+
+/* Нижняя панель */
+#explore-bottom { margin-top: auto; background: rgba(0,0,0,0.6); padding: 15px; border: 1px solid #555; }
+#status-meta { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; }
+#threat-block { display: flex; align-items: center; gap: 15px; position: relative; }
+
+.pace-selector { display: flex; gap: 10px; margin-top: 10px; }
+.pace-btn { background: #222; color: #888; border: 1px solid #444; padding: 8px 15px; cursor: pointer; }
+.pace-btn.active { background: #444; color: #fff; border-color: #eee; }
+
+/* Анимации */
+.delta-value { position: absolute; right: 100px; color: #4affab; font-weight: bold; font-family: monospace; opacity: 0; }
+.animate-delta { animation: floatUp 1.2s forwards; }
+@keyframes floatUp {
+    0% { opacity: 0; transform: translateY(0); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-30px); }
+}
+
+.squad-member-mini {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #333;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+.squad-member-mini .name {
+    font-weight: bold;
+    font-size: 14px;
+    color: #ffbf00;
+    margin-bottom: 4px;
+}
+.squad-member-mini .mini-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 11px;
+    color: #bbb;
+}
+.mini-stats span {
+    white-space: nowrap;
+}
+
+/* Обновленные часики */
+#tick-timer-wrap {
+    position: relative;
+    width: 80px; height: 80px; /* Увеличили */
+    background: #111;
+    border: 3px solid #ffbf00;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 0 15px rgba(255,191,0,0.2);
+}
+
+#tick-timer-bar {
+    position: absolute; bottom: 0; left: 0;
+    width: 100%; height: 0%;
+    background: rgba(255, 191, 0, 0.4);
+    /* Убираем transition для плавности через requestAnimationFrame */
+}
+
+#tick-label { 
+    font-size: 12px; 
+    font-weight: bold; 
+    z-index: 2; 
+    color: #fff; 
+    text-shadow: 1px 1px 2px #000; 
+}
+
+/* Окно итогов должно перекрывать всё внутри ui-explore */
+#expedition-summary {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000; pointer-events: auto;
+}
+.summary-content {
+    background: #1a1612; border: 2px solid #ffbf00;
+    padding: 30px; width: 500px; box-shadow: 0 0 50px rgba(0,0,0,1);
+}
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+.summary-section h4 { margin: 0 0 10px 0; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ffbf00; }
+.summary-section ul { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.summary-section li { margin-bottom: 5px; }

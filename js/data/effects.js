@@ -1,5 +1,4 @@
 export const EFFECTS = {
-    // ЗАЩИТНЫЕ (Баффы)
     BLOCK: { id: 'block', name: "Блок", type: 'buff', icon: '🛡️', duration: 1 },
     PARRY: { id: 'parry', name: "Паррирование", type: 'buff', icon: '⚔️', duration: 1 },
     DODGE: { id: 'dodge', name: "Уклонение", type: 'buff', icon: '💨', duration: 1 },
@@ -7,7 +6,6 @@ export const EFFECTS = {
     SPEED: { id: 'speed', name: "Ускорение", type: 'buff', icon: '⚡', duration: 1 },
     COMBO: { id: 'combo', name: "Комбо", type: 'buff', icon: '✨', duration: 1 },
 
-    // НЕГАТИВНЫЕ (Дебаффы)
     WEAKNESS: { id: 'weakness', name: "Слабость", type: 'debuff', icon: '📉', duration: 1 },
     STUN: { id: 'stun', name: "Оглушение", type: 'debuff', icon: '💫', duration: 1 },
     VULNERABLE: { id: 'vulnerable', name: "Уязвимость", type: 'debuff', icon: '💔', duration: 1 },

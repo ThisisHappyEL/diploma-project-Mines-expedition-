@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Litho-Survival</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="mainCanvas" width="1920" height="1080"></canvas>
+        
+        <div id="top-bar" class="interactive hidden">
+            <span>Цикл: <span id="ui-cycle">1</span></span>
+            <span>Свечи: <span id="ui-candles" class="resource">0</span></span>
+            <span>Авантюристов: <span id="ui-roster-count">0</span></span>
+            <span>Жалование всех погруженцев: <span id="ui-salary" style="color: #ff6666;">0</span></span>
+        </div>
+
+        <div id="ui-hub" class="ui-layer interactive hidden">
+            <div id="hub-menu"></div>
+            <div id="building-ui" class="hidden interactive">
+                <div class="building-header">
+                    <div class="title-block">
+                        <h2 id="building-title">Название здания</h2>
+                        <p id="building-description"></p>
+                    </div>
+                    <button id="building-close-btn" class="hub-btn" style="border-color: #ff4444;">Закрыть</button>
+                </div>
+                <div id="building-content" class="building-content"></div>
+            </div>
+        </div>
+
+        <div id="ui-explore" class="ui-layer interactive hidden">
+            <div id="explore-header">
+                <button id="btn-pause" class="hub-btn">ПАУЗА</button>
+                <div id="pause-indicator">ОСТАНОВЛЕНО</div>
+            </div>
+
+            <div id="explore-layout">
+                <div id="explore-side">
+                    <div class="explore-card">
+                        <h3>Отряд в пещере</h3>
+                        <div id="explore-squad-list"></div>
+                    </div>
+                    <div class="explore-card">
+                        <h3>Находки</h3>
+                        <div id="explore-loot">
+                            💎 Минералы: <span id="loot-minerals">0</span><br>
+                            📜 Знания: <span id="loot-knowledge">0</span><br>
+                            📦 Ресурсы: <span id="loot-materials">0</span>
+                        </div>
+                    </div>
+                    <button id="btn-evacuate" class="hub-btn" style="width:100%; border-color: #ff4444;">Покинуть пещеру</button>
+                </div>
+
+                <div id="explore-main">
+                    <div class="activity-row" data-type="mining">
+                        <div class="activity-info">
+                            <div class="activity-label">
+                                <span class="activity-name">⛏️ ДОБЫЧА</span>
+                                <span class="activity-stats" id="stats-mining">0 / 100 (0%)</span>
+                            </div>
+                            <div class="delta-value" id="delta-mining"></div>
+                            <button class="priority-btn">Приоритет</button>
+                        </div>
+                        <div class="progress-container"><div id="bar-mining" class="progress-fill yellow"></div></div>
+                    </div>
+
+                    <div class="activity-row" data-type="scouting">
+                        <div class="activity-info">
+                            <div class="activity-label">
+                                <span class="activity-name">🔍 РАЗВЕДКА</span>
+                                <span class="activity-stats" id="stats-scouting">0 / 100 (0%)</span>
+                            </div>
+                            <div class="delta-value" id="delta-scouting"></div>
+                            <button class="priority-btn">Приоритет</button>
+                        </div>
+                        <div class="progress-container"><div id="bar-scouting" class="progress-fill turquoise"></div></div>
+                    </div>
+
+                    <div class="activity-row" data-type="construction">
+                        <div class="activity-info">
+                            <div class="activity-label">
+                                <span class="activity-name">🔨 СТРОЙКА</span>
+                                <span class="activity-stats" id="stats-construction">0 / 100 (0%)</span>
+                            </div>
+                            <div class="delta-value" id="delta-construction"></div>
+                            <button class="priority-btn">Приоритет</button>
+                        </div>
+                        <div class="progress-container"><div id="bar-construction" class="progress-fill orange"></div></div>
+                    </div>
+
+                    <div class="activity-row" data-type="research">
+                        <div class="activity-info">
+                            <div class="activity-label">
+                                <span class="activity-name">📚 ИЗЫСКАНИЯ</span>
+                                <span class="activity-stats" id="stats-research">0 / 100 (0%)</span>
+                            </div>
+                            <div class="delta-value" id="delta-research"></div>
+                            <button class="priority-btn">Приоритет</button>
+                        </div>
+                        <div class="progress-container"><div id="bar-research" class="progress-fill purple"></div></div>
+                    </div>
+
+                    <div id="explore-bottom">
+                        <div style="display: flex; align-items: flex-end; gap: 20px;">
+                            
+                            <div id="tick-timer-wrap">
+                                <div id="tick-timer-bar"></div>
+                                <span id="tick-label">ЧАС</span>
+                            </div>
+
+                            <div style="flex-grow: 1;">
+                                <div id="status-meta">
+                                    <span>🕒 ВРЕМЯ: <span id="explore-time">0</span> / <span id="explore-max-time">24</span>ч</span>
+                                    <div id="threat-block">
+                                        <span>⚠️ УГРОЗА: <span id="stats-threat">0 / 100 (0%)</span></span>
+                                        <div class="delta-value" id="delta-threat"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-container" style="height: 12px; margin-top: 5px;">
+                                    <div id="bar-threat" class="progress-fill red"></div>
+                                </div>
+                                <div class="pace-selector">
+                                    <button class="pace-btn" data-pace="slow">Тихо</button>
+                                    <button class="pace-btn active" data-pace="normal">Норм</button>
+                                    <button class="pace-btn" data-pace="fast">Спешка</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="expedition-summary" class="hidden">
+                <div class="summary-content">
+                    <h2 id="summary-title">Экспедиция завершена</h2>
+                    <p id="summary-reason"></p>
+                    <div class="summary-grid">
+                        <div class="summary-section">
+                            <h4>Прогресс:</h4>
+                            <ul id="summary-progress-list"></ul>
+                        </div>
+                        <div class="summary-section">
+                            <h4>Ресурсы:</h4>
+                            <ul id="summary-loot-list"></ul>
+                        </div>
+                    </div>
+                    <button id="btn-summary-close" class="hub-btn action-btn" style="width: 100%;">Вернуться на базу</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="ui-battle" class="ui-layer interactive hidden">
+            <div id="ui-battle-bottom">
+                <div id="turn-info">Ход: Загрузка...</div>
+                <div id="skills-panel"></div>
+                <div id="log-panel"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

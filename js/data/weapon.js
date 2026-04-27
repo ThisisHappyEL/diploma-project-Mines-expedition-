@@ -1,12 +1,12 @@
-import { SWORD_SKILLS } from './swordSkills.js';
+import { DEFAULT_SWORD_SKILL, SWORD_SKILLS } from '../../templates/weaponSkills/swordSkills.js';
 
 export const sword = {
     rustySword: { 
         name: "Ржавый меч", 
         type: "weapon", 
         level: 1,
-        baseDamage: 10, // Наш догматичный урон 1 уровня
-        bonuses: { battle: 2 },
+        baseDamage: 10,
+        defaultSkillData: DEFAULT_SWORD_SKILL, 
         skills: [
             SWORD_SKILLS.dupliren, 
             SWORD_SKILLS.cleavingStrike, 
