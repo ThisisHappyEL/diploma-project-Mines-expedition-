@@ -1,4 +1,5 @@
 import { GameState } from '../core/GameState.js';
+import { SceneManager } from '../core/SceneManager.js';
 
 export const ExpeditionManager = {
     active: false,
@@ -25,6 +26,17 @@ export const ExpeditionManager = {
     togglePause() {
         this.isPaused = !this.isPaused;
         return this.isPaused;
+    },
+
+    triggerBattle() {
+        this.isPaused = true;
+        this.active = false;
+        
+        console.log("УГРОЗА 100%! Враги атакуют!");
+
+        import('../scenes/BattleScene.js').then(m => {
+            SceneManager.changeScene(m.BattleScene);
+        });
     },
 
     tick() {
@@ -64,9 +76,9 @@ export const ExpeditionManager = {
         });
 
         let threatGain = 0;
-        if (this.pace === 'normal') threatGain = 2 + Math.random() * 3;
-        else if (this.pace === 'fast') threatGain = 5 + Math.random() * 5;
-        else if (this.pace === 'slow') threatGain = 0.5 + Math.random() * 1;
+        if (this.pace === 'normal') threatGain = 2 + Math.random() * 3; // было 2 + Math.random() * 3
+        else if (this.pace === 'fast') threatGain = 50 + Math.random() * 25; // было 5 + Math.random() * 5
+        else if (this.pace === 'slow') threatGain = 0.5 + Math.random() * 1; // было 0.5 + Math.random() * 1
 
         this.lastDeltas.threat = parseFloat(threatGain.toFixed(1));
         this.threat += this.lastDeltas.threat;

@@ -196,3 +196,91 @@ canvas {
 .summary-section h4 { margin: 0 0 10px 0; border-bottom: 1px solid #444; padding-bottom: 5px; color: #ffbf00; }
 .summary-section ul { list-style: none; padding: 0; margin: 0; font-size: 14px; }
 .summary-section li { margin-bottom: 5px; }
+
+#ui-battle {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding-bottom: 50px;
+    z-index: 20;
+    pointer-events: none !important;
+}
+
+#ui-battle-bottom {
+    width: 90%;
+    height: 220px;
+    background: rgba(20, 15, 12, 0.95);
+    border: 2px solid #ffbf00;
+    display: flex;
+    padding: 15px;
+    gap: 20px;
+    pointer-events: auto;
+    pointer-events: auto !important;
+}
+
+#turn-info {
+    flex: 0 0 200px;
+    font-size: 20px;
+    color: #ffbf00;
+    font-weight: bold;
+    border-right: 1px solid #444;
+}
+
+#skills-panel {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-content: center;
+}
+
+#log-panel {
+    flex: 0 0 350px;
+    font-size: 13px;
+    color: #aaa;
+    overflow-y: auto;
+    border-left: 1px solid #444;
+    padding-left: 15px;
+    display: flex;
+    flex-direction: column-reverse; /* Последние сообщения сверху */
+}
+
+.skill-btn {
+    background: #2a241e;
+    color: #e0d8c3;
+    border: 1px solid #888;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 120px;
+    transition: 0.2s;
+}
+
+.skill-btn:hover:not(:disabled) {
+    background: #ffbf00;
+    color: #000;
+}
+
+.skill-btn.active {
+    border-color: #ffbf00;
+    box-shadow: 0 0 10px #ffbf00;
+    background: #3d352e;
+}
+
+.hub-btn:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    border-color: #333 !important;
+    background: #1a1612 !important;
+    color: #666 !important;
+}
+
+.skill-btn:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    border-color: #333 !important;
+    background: #1a1612 !important;
+    color: #666 !important;
+    box-shadow: none !important;
+}

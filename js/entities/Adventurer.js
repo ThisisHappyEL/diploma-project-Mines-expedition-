@@ -1,6 +1,6 @@
-import { Unit } from '../../templates/Unit.js';
-import { BACKGROUNDS } from '../../templates/backgrounds.js';
-import { SWORD_SKILLS } from '../../templates/weaponSkills/swordSkills.js';
+import { Unit } from './Unit.js';
+import { BACKGROUNDS } from '../data/backgrounds.js';
+import { SWORD_SKILLS } from '../data/weaponSkills/swordSkills.js'
 
 const BASE_HP = 40;
 

@@ -1,10 +1,10 @@
-import { DEFAULT_SWORD_SKILL, SWORD_SKILLS } from '../../templates/weaponSkills/swordSkills.js';
+import { DEFAULT_SWORD_SKILL, SWORD_SKILLS } from "./weaponSkills/swordSkills.js";
 
 export const sword = {
     rustySword: { 
         name: "Ржавый меч", 
         type: "weapon", 
-        level: 1,
+        level: 4,
         baseDamage: 10,
         defaultSkillData: DEFAULT_SWORD_SKILL, 
         skills: [
