@@ -1,4 +1,4 @@
-import { EFFECTS } from '../data/effects.js';
+import { EFFECTS } from '../data/battleData/effects.js';
 
 export class Unit {
     constructor(config) {

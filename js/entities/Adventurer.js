@@ -1,5 +1,5 @@
 import { Unit } from './Unit.js';
-import { BACKGROUNDS } from '../data/backgrounds.js';
+import { BACKGROUNDS } from '../data/charapterData/backgrounds.js';
 import { SWORD_SKILLS } from '../data/weaponSkills/swordSkills.js'
 
 const BASE_HP = 40;

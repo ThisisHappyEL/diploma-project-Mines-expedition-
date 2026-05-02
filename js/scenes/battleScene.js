@@ -1,8 +1,8 @@
 import { BattleManager } from '../managers/BattleManager.js';
 import { Adventurer } from '../entities/Adventurer.js';
 import { Unit } from '../entities/Unit.js';
-import { sword } from '../data/weapon.js';
-import { GLASS_FOREST_ENEMIES } from '../data/enemies.js';
+import { test_weapon } from '../data/weapon.js';
+import { GLASS_FOREST_ENEMIES } from '../data/battleData/enemies.js';
 import { GameState } from '../core/GameState.js';
 import { SceneManager } from '../core/SceneManager.js';
 
@@ -21,7 +21,7 @@ export const BattleScene = {
 
         GameState.currentSquad.forEach((data, index) => {
             const hero = new Adventurer(data.name, data.background, index + 1);
-            hero.equip('rightHand', sword.rustySword);
+            hero.equip('rightHand', test_weapon.debugSword);
             hero.hp = data.hp;
             hero.maxHp = data.maxHp;
             this.gameUnits.push(hero);

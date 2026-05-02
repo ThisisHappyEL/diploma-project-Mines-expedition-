@@ -43,7 +43,7 @@ export const ExploreScene = {
                 <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: #bbb;">
                     <span>⚔️${adv.combat}</span>
                     <span>⛏️${adv.mining}</span>
-                    <span>🔍${adv.scouting}</span>
+                    <span>🪔${adv.scouting}</span>
                     <span>🔨${adv.building}</span>
                     <span>📚${adv.research}</span>
                 </div>
@@ -121,7 +121,7 @@ export const ExploreScene = {
 
         document.getElementById('summary-progress-list').innerHTML = `
             <li>⛏️ Добыча: ${Math.floor(ExpeditionManager.progress.mining)}%</li>
-            <li>🔍 Разведка: ${Math.floor(ExpeditionManager.progress.scouting)}%</li>
+            <li>🪔 Разведка: ${Math.floor(ExpeditionManager.progress.scouting)}%</li>
             <li>🔨 Стройка: ${Math.floor(ExpeditionManager.progress.construction)}%</li>
             <li>📚 Знания: ${Math.floor(ExpeditionManager.progress.research)}%</li>
         `;

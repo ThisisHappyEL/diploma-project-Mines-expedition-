@@ -1,4 +1,4 @@
-import { HUB_LOCATIONS } from '../data/hubLocations.js';
+import { HUB_LOCATIONS } from '../data/hubData/hubLocations.js';
 import { GameState } from '../core/GameState.js';
 import { SceneManager } from '../core/SceneManager.js';
 import { HubManager } from '../managers/HubManager.js';

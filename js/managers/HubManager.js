@@ -1,6 +1,6 @@
 import { GameState } from '../core/GameState.js';
-import { BACKGROUNDS } from '../data/backgrounds.js';
-import { TRAITS } from '../data/traits.js';
+import { BACKGROUNDS } from '../data/charapterData/backgrounds.js';
+import { TRAITS } from '../data/charapterData/traits.js';
 
 export class HubManager {
     static currentRecruits = [];
@@ -97,7 +97,7 @@ export class HubManager {
                 <div class="stats">
                     <span>⚔️ Бой: ${recruit.combat}</span>
                     <span>⛏️ Добыча: ${recruit.mining}</span>
-                    <span>🔍 Разв.: ${recruit.scouting}</span>
+                    <span>🪔 Разв.: ${recruit.scouting}</span>
                     <span>📚 Изыск: ${recruit.research}</span>
                     <span>🔨 Строй: ${recruit.building}</span>
                     <span style="color:#ff6666">❤️ HP: ${recruit.hp}</span>
@@ -146,7 +146,7 @@ export class HubManager {
                 <div class="stats">
                     <span>⚔️ Бой: ${adv.combat}</span>
                     <span>⛏️ Добыча: ${adv.mining}</span>
-                    <span>🔍 Разв.: ${adv.scouting}</span>
+                    <span>🪔 Разв.: ${adv.scouting}</span>
                     <span>📚 Изыск: ${adv.research}</span>
                     <span>🔨 Строй: ${adv.building}</span>
                     <span style="color:#ff6666">❤️ HP: ${adv.hp}/${adv.maxHp}</span>
@@ -201,11 +201,16 @@ export class HubManager {
                     <span>${isInSquad ? '✅' : ''}</span>
                 </div>
                 <div class="bg-trait">${adv.background}</div>
+                <div class="bg-trait" style="color: #4affab;">${recruit.traits[0].name}</div>
+                <div style="font-size:11px; color:#888; margin-bottom:10px;">${recruit.traits[0].desc}</div>
                 <div class="stats">
+                    <span style="color:#ff6666">❤️ HP: ${adv.hp}/${adv.maxHp}</span>
+                    <span style="color:#66ff66">💨 Сил: ${adv.stamina}/${adv.maxStamina}</span>
                     <span>⚔️ Бой: ${adv.combat}</span>
                     <span>⛏️ Добыча: ${adv.mining}</span>
-                    <span>🔍 Разв.: ${adv.scouting}</span>
-                    <span style="color:#ff6666">❤️ HP: ${adv.hp}</span>
+                    <span>🪔 Разв.: ${adv.scouting}</span>
+                    <span>📚 Изыск: ${adv.research}</span>
+                    <span>🔨 Строй: ${adv.building}</span>
                 </div>
             `;
 
