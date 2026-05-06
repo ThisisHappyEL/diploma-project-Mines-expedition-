@@ -97,9 +97,9 @@ export class Unit {
     }
 
     takeDamage(amt) {
-        this.hp -= amt;
+        this.hp = Math.max(0, this.hp - amt);
         this.offsetX = this.side === 'player' ? -20 : 20;
-        if (this.hp <= 0) { this.hp = 0; this.isDead = true; }
+        if (this.hp <= 0) this.isDead = true;
     }
 
     update() {
@@ -118,38 +118,29 @@ export class Unit {
         const nameOnly = this.name.split(' ')[0];
         this.effectHitboxes = []; 
 
-        if (isActiveTurn || isPotentialTarget || isHovered) {
+        if (isActiveTurn) {
             ctx.save();
-            let color = '#ffffff';
-            let blur = 15;
-            let width = 2;
+            ctx.shadowBlur = isHovered ? 40 : 20; 
+            ctx.shadowColor = "#ffbf00";
+            ctx.strokeStyle = isHovered ? "#ffffff" : "#ffbf00"; 
+            ctx.lineWidth = isHovered ? 6 : 4;
+            ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
+            ctx.restore();
+        }
 
-            if (isActiveTurn) {
-                color = '#ffbf00'; blur = 30; width = 4;
-            } else if (isPotentialTarget && isHovered) {
-                color = this.side === 'player' ? '#00ccff' : '#ff0000'; 
-                blur = 35; width = 5;
-            } else if (isPotentialTarget) {
-                color = this.side === 'player' ? '#4aa3df' : '#ff4444'; 
-                blur = 15; width = 2;
-            } else if (isHovered) {
-                color = '#ffffff'; blur = 20; width = 2;
-            }
-
-            ctx.shadowColor = color;
-            ctx.shadowBlur = blur;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = width;
+        if ((isPotentialTarget || isHovered) && !isActiveTurn) {
+            ctx.save();
+            let color = isPotentialTarget ? (this.side === 'player' ? '#00ccff' : '#ff0000') : '#ffffff';
+            if (isHovered) color = '#ffffff'; 
+            ctx.shadowColor = color; ctx.shadowBlur = 25; ctx.strokeStyle = color; ctx.lineWidth = 4;
             ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
             ctx.restore();
         }
 
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath(); ctx.ellipse(drawX + this.width/2, this.y + this.height, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
-
         ctx.fillStyle = this.side === 'player' ? '#4a90e2' : '#e24a4a';
-        ctx.strokeStyle = isActiveTurn ? '#ffbf00' : '#fff';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = isActiveTurn ? '#ffbf00' : '#fff'; ctx.lineWidth = 2;
         ctx.fillRect(drawX, this.y, this.width, this.height);
         ctx.strokeRect(drawX, this.y, this.width, this.height);
 
@@ -183,7 +174,6 @@ export class Unit {
 
     isClicked(mx, my) {
         if (this.isDead) return false;
-        const p = 20;
-        return mx >= (this.x - p) && mx <= (this.x + this.width + p) && my >= (this.y - p) && my <= (this.y + this.height + p);
+        return mx >= (this.x - 10) && mx <= (this.x + this.width + 10) && my >= (this.y - 10) && my <= (this.y + this.height + 10);
     }
 }

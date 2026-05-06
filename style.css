@@ -239,7 +239,7 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
 #expedition-summary { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 2000; pointer-events: auto; }
 .summary-content { background: #1a1612; border: 2px solid #ffbf00; padding: 30px; width: 500px; }
 .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
-#ui-battle { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 50px; z-index: 20; pointer-events: none !important; }
+#ui-battle { pointer-events: none !important; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
 #ui-battle-bottom { width: 90%; height: 220px; background: rgba(20, 15, 12, 0.95); border: 2px solid #ffbf00; display: flex; padding: 15px; gap: 20px; pointer-events: auto; }
 #turn-info { flex: 0 0 200px; font-size: 20px; color: #ffbf00; font-weight: bold; border-right: 1px solid #444; }
 #skills-panel { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-content: center; }
@@ -291,8 +291,8 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
     width: 100%;
 }
 
-.tt-type { color: #aaa; font-style: italic; margin-bottom: 5px; }
-.tt-dmg { color: #fff; font-weight: bold; margin-bottom: 5px; }
+.tt-type { color: #888; font-style: italic; font-size: 14px; margin-bottom: 5px; }
+.tt-desc { color: #ccc; margin-top: auto; line-height: 1.3; font-size: 14px; border-top: 1px solid #444; padding-top: 8px; }
 .tt-desc { color: #ccc; margin-bottom: 5px; line-height: 1.3; }
 
 /* Блоки Синергии и Условий */
@@ -302,9 +302,9 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
 /* Эффекты и движения */
 .tt-action { color: #e0d8c3; margin-top: 4px; }
 .tt-action-label { color: #ffbf00; font-weight: bold; }
-.tt-move { color: #b19cd9; font-weight: bold; } /* Фиолетовый для движений */
-.tt-buff { color: #4affab; font-weight: bold; }   /* Зеленый для баффов */
-.tt-debuff { color: #ff6666; font-weight: bold; } /* Красный для дебаффов/урона */
+.tt-move { color: #b19cd9 !important; font-weight: bold; } /* Фиолетовый для движений */
+.tt-buff { color: #4affab !important; font-weight: bold; }   /* Зеленый для баффов */
+.tt-debuff { color: #ff6666 !important; font-weight: bold; } /* Красный для дебаффов/урона */
 .tt-reward-line {
     background: rgba(255, 215, 0, 0.15); /* Золотистый фон */
     border-left: 2px solid #ffbf00;
@@ -329,4 +329,135 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
     height: 1px;
     background: linear-gradient(to right, transparent, #555, transparent);
     margin: 8px 0;
+}
+
+/* Экспериментальный интерфейс*/
+
+#ui-battle { pointer-events: none !important; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+
+/* Трапеция сверху */
+#b-top-bar {
+    position: absolute; top: 0; left: 10%; width: 80%; height: 100px;
+    background: linear-gradient(to bottom, #1a1612, #0a0806);
+    clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+    border-bottom: 2px solid #ffbf00;
+    pointer-events: auto; display: flex; flex-direction: column; align-items: center;
+}
+
+#b-log-btn { 
+    position: absolute; top: 10px; right: 10px; 
+    z-index: 1100; pointer-events: auto;
+}
+
+/* Трапеция снизу */
+#b-bottom-bar {
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 260px;
+    background: linear-gradient(to top, #151210 80%, #25211c 100%);
+    clip-path: polygon(0 20%, 8% 0, 92% 0, 100% 20%, 100% 100%, 0 100%);
+    border-top: 1px solid #444;
+    display: flex; justify-content: space-between; pointer-events: auto;
+}
+
+.b-action-tab {
+    width: 180px; height: 100%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: Georgia, serif; font-weight: bold; font-size: 18px;
+    color: #888; transition: 0.3s; background: rgba(0,0,0,0.2);
+}
+
+.b-action-tab:hover { color: #ffbf00; background: rgba(255, 191, 0, 0.05); }
+
+#b-main-area { flex: 1; display: flex; flex-direction: column; padding: 10px 20px; }
+
+#b-info-row { display: flex; height: 130px; gap: 20px; margin-bottom: 10px; }
+.b-info-block { flex: 1; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 4px; overflow: hidden; }
+
+#b-btn-move { clip-path: polygon(0 100%, 0 20%, 50% 0, 100% 0, 100% 100%); border-right: 1px solid #333; }
+#b-btn-rest { clip-path: polygon(0 0, 50% 0, 100% 20%, 100% 100%, 0 100%); border-left: 1px solid #333; }
+
+/* Центр нижней панели (Быстрая инфа + Кнопки) */
+#b-center-zone { flex: 1; display: flex; flex-direction: column; align-items: center; }
+#b-quick-info { height: 60px; text-align: center; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;}
+#b-skills-row {
+    display: flex; gap: 8px; justify-content: center; align-items: center;
+    border-top: 1px solid #444; padding-top: 15px; height: 80px;
+}
+
+/* Выпадающий лог */
+#b-log-container {
+    position: absolute; top: 55px; right: 10px; 
+    width: 380px; height: 350px;
+    background: rgba(15, 12, 10, 0.98); 
+    border: 1px solid #ffbf00;
+    display: flex; flex-direction: column-reverse; /* Новые сообщения сверху */
+    padding: 10px; overflow-y: scroll; /* Принудительный скролл */
+    font-size: 12px; color: #aaa; pointer-events: auto; z-index: 1050;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
+
+#b-log-container::-webkit-scrollbar { width: 6px; }
+#b-log-container::-webkit-scrollbar-thumb { background: #3d352e; border: 1px solid #ffbf00; }
+
+.skill-btn {
+    min-width: 140px; height: 65px;
+    background: #2a241e; border: 1px solid #666;
+    color: #e0d8c3; cursor: pointer; font-size: 14px; 
+    transition: 0.2s;
+}
+
+#b-turn-queue {
+    display: flex; gap: 8px; justify-content: center;
+    margin-top: 5px; width: 100%;
+}
+
+.queue-item {
+    width: 45px; height: 45px; border: 1px solid #555;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: bold; color: #fff;
+    position: relative; transition: transform 0.2s, margin-top 0.2s;
+}
+
+.queue-item.active { border: 2px solid #ffbf00; box-shadow: 0 0 10px #ffbf00; }
+.queue-item.player { background: #4a90e2; }
+.queue-item.enemy { background: #e24a4a; }
+.queue-item:hover { margin-top: 5px; transform: scale(1.1); border-color: #fff; }
+
+.tt-stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr; /* [HP] [BATTLE] [STAMINA] */
+    align-items: center;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.queue-item.hover-highlight {
+    border-color: #fff !important;
+    transform: translateY(10px);
+    box-shadow: 0 0 15px rgba(255,255,255,0.5);
+}
+
+.tt-equip-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr;
+    gap: 10px;
+    height: 100%;
+}
+
+.tt-equip-col {
+    padding: 5px;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+}
+
+.tt-equip-col:last-child { border-right: none; }
+
+.tt-equip-header { color: #ffbf00; font-size: 11px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 3px;}
+.tt-equip-name { color: #fff; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
+.tt-equip-stat { font-size: 11px; color: #888; margin-bottom: 2px; }
+
+.queue-item.active.hover-highlight {
+    border-color: #fff !important;
+    box-shadow: 0 0 20px #ffbf00, 0 0 10px #fff;
+    transform: scale(1.15) translateY(5px);
 }

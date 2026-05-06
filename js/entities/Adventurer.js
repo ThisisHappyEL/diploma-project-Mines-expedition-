@@ -9,14 +9,12 @@ export class Adventurer extends Unit {
             stamina: data.stamina, maxStamina: data.maxStamina,
             combat: Number(data.combat || data.pureStats?.battle) || 5 
         });
-        
         this.background = data.background || "Неизвестно";
         this.level = data.level || 1;
         this.traits = data.traits || [];
         this.civilBody = data.civilBody;
         this.baseStats = data.pureStats ? { ...data.pureStats } : { battle: 5, stamina: 100, hp: 40 };
         this.equipment = data.equipment ? { ...data.equipment } : { leftHand: null, rightHand: null, body: null };
-
         this.recalculateMaxHp();
         this.recalculateMaxStamina();
     }
@@ -32,8 +30,8 @@ export class Adventurer extends Unit {
             }
         });
         const armor = this.equipment.body || this.civilBody;
-        if (armor && (armor.stats || armor.bonuses)) {
-            const b = armor.stats || armor.bonuses;
+        if (armor) {
+            const b = armor.stats || armor.levels?.[this.level] || armor.effect || {};
             if (b.battle) s.battle += b.battle;
             if (b.atkArmor) s.atkArmor += b.atkArmor;
             if (b.defArmor) s.defArmor += b.defArmor;
@@ -44,7 +42,8 @@ export class Adventurer extends Unit {
     recalculateMaxHp() {
         let bonus = 0;
         this.traits.forEach(t => { if (t.effect?.hp) bonus += t.effect.hp; });
-        const b = (this.equipment.body || this.civilBody)?.stats || (this.equipment.body || this.civilBody)?.bonuses;
+        const armor = this.equipment.body || this.civilBody;
+        const b = armor?.stats || armor?.levels?.[this.level] || armor?.effect;
         if (b?.hp) bonus += b.hp;
         this.maxHp = (Number(this.baseStats.hp) || 40) + bonus;
     }
@@ -52,7 +51,8 @@ export class Adventurer extends Unit {
     recalculateMaxStamina() {
         let bonus = 0;
         this.traits.forEach(t => { if (t.effect?.stamina) bonus += t.effect.stamina; });
-        const b = (this.equipment.body || this.civilBody)?.stats || (this.equipment.body || this.civilBody)?.bonuses;
+        const armor = this.equipment.body || this.civilBody;
+        const b = armor?.stats || armor?.levels?.[this.level] || armor?.effect;
         if (b?.stamina) bonus += b.stamina;
         this.maxStamina = (Number(this.baseStats.stamina) || 100) + bonus;
     }
@@ -79,35 +79,60 @@ export class Adventurer extends Unit {
         let base = Number(this.baseStats.battle || 5);
         let tB = 0, gB = 0;
         this.traits.forEach(t => { if (t.effect?.battle) tB += t.effect.battle; });
-        const b = (this.equipment.body || this.civilBody)?.stats || (this.equipment.body || this.civilBody)?.bonuses;
+        const armor = this.equipment.body || this.civilBody;
+        const b = armor?.stats || armor?.levels?.[this.level] || armor?.effect;
         if (b?.battle) gB += b.battle;
         return { base, tB, gB, total: base + tB + gB };
     }
 
     getTooltipHTML() {
         const bd = this.getStatBreakdown();
-        const weapon = this.equipment.rightHand;
-        const armor = this.equipment.body || this.civilBody;
         let bonusStr = `(${bd.base}`;
         if (bd.tB !== 0) bonusStr += `<span style="color:#4affab">${bd.tB > 0 ? '+' : ''}${bd.tB}</span>`;
         if (bd.gB !== 0) bonusStr += `<span style="color:#ff7f50">${bd.gB > 0 ? '+' : ''}${bd.gB}</span>`;
         bonusStr += `)`;
         return `
             <div class="unit-card-mini">
-                <h3 style="margin:0; color:#fff;">${this.name.toUpperCase()}</h3>
+                <h3 style="margin:0; color:#fff; font-size: 20px;">${this.name.toUpperCase()}</h3>
                 <div style="font-size:12px; color:#ffbf00; margin-top:2px;">${this.background} | <span style="color:#4affab">${this.traits[0]?.name || 'Без черт'}</span></div>
                 <div class="tt-divider"></div>
-                <div style="text-align:center;">
-                    <div style="font-size:18px; color:#ffbf00; font-weight:bold;">⚔️ Бой: ${bd.total} <small style="font-size:11px; color:#888;">${bonusStr}</small></div>
-                    <div style="display:flex; justify-content:space-around; margin-top:8px; font-weight:bold;">
-                        <span style="color:#ff6666">❤️ ${Math.floor(this.hp)}/${this.maxHp}</span>
-                        <span style="color:#66ff88">💨 ${Math.floor(this.stamina)}/${this.maxStamina}</span>
-                    </div>
+                <div class="tt-stats-row">
+                    <div style="color:#ff6666; font-weight:bold; font-size:18px;">❤️ ${Math.floor(this.hp)}<small style="font-size:10px; color:#666;">/${this.maxHp}</small></div>
+                    <div style="font-size:18px; color:#ffbf00; font-weight:bold; border-left:1px solid #444; border-right:1px solid #444;">⚔️ ${bd.total} <br><small style="font-size:10px; color:#888;">${bonusStr}</small></div>
+                    <div style="color:#66ff88; font-weight:bold; font-size:18px;">💨 ${Math.floor(this.stamina)}<small style="font-size:10px; color:#666;">/${this.maxStamina}</small></div>
                 </div>
-                <div class="tt-divider"></div>
-                <div style="font-size: 11px; line-height: 1.4;">
-                    <div style="color:#4affab">⚔️ ${weapon ? `${weapon.name} [Ур.${weapon.level}] (Урн:${weapon.baseDamage})` : 'Без оружия'}</div>
-                    <div style="color:#ff7f50">🛡️ ${armor ? armor.name : 'Лохмотья'}</div>
+            </div>`;
+    }
+
+    getEquipmentHTML() {
+        const weapon = this.equipment.rightHand;
+        const armor = this.equipment.body || this.civilBody;
+        const offhand = this.equipment.leftHand;
+        const b = armor?.stats || armor?.levels?.[this.level] || armor?.effect || {};
+        const bd = this.getStatBreakdown();
+
+        return `
+            <div class="tt-equip-grid">
+                <div class="tt-equip-col">
+                    <div class="tt-equip-header">Оружие</div>
+                    <div class="tt-equip-name" style="color:#4affab">${weapon ? weapon.name : 'Нет'}</div>
+                    ${weapon ? `<div class="tt-equip-stat">Ур. ${weapon.level}</div><div class="tt-equip-stat">Урон оружия: ${weapon.baseDamage}</div>` : ''}
+                </div>
+                <div class="tt-equip-col">
+                    <div class="tt-equip-header">Одежда</div>
+                    <div class="tt-equip-name" style="color:#ff7f50">${armor ? armor.name : 'Лохмотья'}</div>
+                    ${b.hp || b.stamina || bd.gB || b.atkArmor || b.defArmor ? `
+                        ${b.hp ? `<div class="tt-equip-stat" style="color:#ff6666">Здоровье: +${b.hp}</div>` : ''}
+                        ${b.stamina ? `<div class="tt-equip-stat" style="color:#66ff88">Выносливость: +${b.stamina}</div>` : ''}
+                        ${bd.gB ? `<div class="tt-equip-stat" style="color:#ffbf00">Бой: +${bd.gB}</div>` : ''}
+                        ${b.atkArmor ? `<div class="tt-equip-stat" style="color:#4affab">Шанс на удачную атаку: +${b.atkArmor}</div>` : ''}
+                        ${b.defArmor ? `<div class="tt-equip-stat" style="color:#ff7f50">Шанс на удачную защиту: +${b.defArmor}</div>` : ''}
+                    ` : `<div class="tt-equip-stat" style="color:#666; font-style:italic;">Нет боевых бонусов</div>`}
+                </div>
+                <div class="tt-equip-col">
+                    <div class="tt-equip-header">Вспомогательное оружие.</div>
+                    <div class="tt-equip-name" style="color:#aaa">${offhand ? offhand.name : 'Пусто'}</div>
+                    ${!offhand ? `<div class="tt-equip-stat" style="color:#4affab">Урон x1.3</div>` : ''}
                 </div>
             </div>`;
     }

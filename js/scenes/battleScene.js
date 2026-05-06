@@ -14,18 +14,35 @@ export const BattleScene = {
     mouseX: 0,
     mouseY: 0,
     hoverQueueUnit: null,
-    hoveredSkillBtn: null, 
+    hoveredObject: null, 
 
     init() {
         console.log("Бой начался!");
-        document.getElementById('ui-battle').classList.remove('hidden');
-        this.gameUnits = []; this.damageTexts = []; this.hoveredSkillBtn = null; this.hoverQueueUnit = null;
-        
-        let tt = document.getElementById('battle-tooltip');
-        if (!tt) {
-            tt = document.createElement('div'); tt.id = 'battle-tooltip'; tt.className = 'hidden';
-            document.getElementById('game-container').appendChild(tt); 
-        }
+        const uiBase = document.getElementById('ui-battle');
+        uiBase.classList.remove('hidden');
+        uiBase.innerHTML = `
+            <div id="b-top-bar">
+                <div id="b-turn-display" style="margin-top:5px; color:#ffbf00; font-size:11px; font-weight:bold;">РАУНД 1</div>
+                <div id="b-turn-queue"></div> 
+            </div>
+            <button id="b-log-btn" class="hub-btn">ЛОГ</button>
+            <div id="b-log-container" class="hidden"></div>
+            <div id="b-bottom-bar">
+                <div id="b-btn-move" class="b-action-tab">ДВИЖЕНИЕ</div>
+                <div id="b-main-area">
+                    <div id="b-info-row">
+                        <div id="b-info-left" class="b-info-block"></div>
+                        <div id="b-info-right" class="b-info-block"></div>
+                    </div>
+                    <div id="b-skills-row"></div>
+                </div>
+                <div id="b-btn-rest" class="b-action-tab">ОТДЫХ</div>
+            </div>
+        `;
+
+        document.getElementById('b-log-btn').onclick = () => document.getElementById('b-log-container').classList.toggle('hidden');
+
+        this.gameUnits = []; this.damageTexts = []; this.hoveredObject = null; this.hoverQueueUnit = null;
 
         GameState.currentSquad.forEach((data, index) => {
             const hero = new Adventurer(data, index + 1);
@@ -42,46 +59,170 @@ export const BattleScene = {
         }
 
         this.battleManager = new BattleManager(this.gameUnits, (a, s, m) => this.updateUI(a, s, m));
+        this.battleManager.logPanel = document.getElementById('b-log-container');
         this.setupInput();
         this.battleManager.startBattle();
     },
 
+    renderTurnQueue() {
+        const container = document.getElementById('b-turn-queue');
+        if (!container || !this.battleManager) return;
+        container.innerHTML = this.battleManager.turnQueue.map((unit, index) => {
+            const sideClass = unit.side === 'player' ? 'player' : 'enemy';
+            const activeClass = index === 0 ? 'active' : '';
+            const isHov = this.hoverQueueUnit === unit ? 'hover-highlight' : '';
+            return `<div class="queue-item ${sideClass} ${activeClass} ${isHov}" data-name="${unit.name}"
+                        onmouseenter="BattleScene.hoverQueueUnit = BattleScene.gameUnits.find(u => u.name === '${unit.name}')" 
+                        onmouseleave="BattleScene.hoverQueueUnit = null">
+                        ${unit.name.substring(0, 5)}
+                    </div>`;
+        }).join('');
+    },
+
     getRangeHTML(skill) {
-        if (skill.isMove) return `<div style="color:#aaa; text-align: center; margin: 5px 0;">Обмен позицией с соседним союзником</div>`;
+        if (skill.isMove || skill.isRest) return '';
         let validHTML = ''; let targetHTML = '';
         const validPos = skill.validPos || [1,2,3,4];
         const targetPos = skill.targetPos || [1,2,3,4];
         for (let i = 4; i >= 1; i--) validHTML += `<div class="pos-dot ${validPos.includes(i) ? 'yellow' : ''}"></div>`;
         if (!skill.targetSelf) {
-            let dots = '';
-            let minT = Math.min(...targetPos); let maxT = Math.max(...targetPos);
-            for (let i = 1; i <= 4; i++) {
-                let colorClass = skill.targetAlly ? 'green' : 'red';
-                dots += `<div class="pos-dot ${targetPos.includes(i) ? colorClass : ''} aoe-dot"></div>`;
-            }
+            let dots = ''; let minT = Math.min(...targetPos); let maxT = Math.max(...targetPos);
+            for (let i = 1; i <= 4; i++) dots += `<div class="pos-dot ${targetPos.includes(i) ? (skill.targetAlly ? 'green' : 'red') : ''} aoe-dot"></div>`;
             if (skill.isAoE) {
-                const start = (minT - 1) * 16 + 2; const w = (maxT - minT) * 16 + 8;
-                targetHTML = `<div class="aoe-line-container"><div class="aoe-line" style="left:${start}px; width:${w}px;"></div>${dots}</div>`;
+                const sL = (minT - 1) * 16 + 2; const w = (maxT - minT) * 16 + 8;
+                targetHTML = `<div class="aoe-line-container"><div class="aoe-line" style="left:${sL}px; width:${w}px;"></div>${dots}</div>`;
             } else targetHTML = `<div class="pos-group">${dots}</div>`;
         }
-        let arrow = skill.targetSelf ? '' : `<span style="color:#555">»</span>`;
-        return `<div class="pos-container"><div class="pos-group">${validHTML}</div>${arrow}${targetHTML}</div>`;
+        return `<div class="pos-container"><div class="pos-group">${validHTML}</div><span style="color:#555">»</span>${targetHTML}</div>`;
     },
 
     translateEffect(effectString) {
         if (!effectString) return [];
         let translated = [];
         effectString.split(',').forEach(part => {
-            let p = part.trim();
-            if (p.toLowerCase().startsWith('self ')) p = p.substring(5).trim();
-            const params = p.split('-');
-            let id = params[0].toUpperCase();
-            const effectBase = EFFECTS[id];
-            if (id === 'DOT') translated.push(`Кровотечение (${params[2] || 2} ур/ход)`);
-            else if (effectBase) translated.push(`${effectBase.name} (${params[1] || 1})`);
-            else translated.push(`${params[0]} (${params[1] || 1})`);
+            const p = part.trim();
+            const cleanPart = p.toLowerCase().startsWith('self ') ? p.substring(5).trim() : p;
+
+            const params = cleanPart.split('-');
+            const effectId = params[0].toUpperCase();
+            const val1 = params[1] || 1;
+            
+            const effectBase = EFFECTS[effectId];
+            
+            if (effectId === 'DOT') {
+                translated.push(`Кровотечение (${params[2] || 2} ур/ход)`);
+            } else if (effectBase) {
+                translated.push(`${effectBase.name} (${val1})`);
+            } else {
+                translated.push(`${params[0]} (${val1})`);
+            }
         });
         return translated; 
+    },
+
+    getSkillDetailedHTML(skill) {
+        const attacker = this.battleManager?.getActiveUnit();
+        let weaponBase = attacker?.equipment?.rightHand?.baseDamage || 10;
+        let effectiveBase = weaponBase;
+        let baseLabel = `База оружия: ${weaponBase}`;
+
+        if (attacker?.equipment && attacker.equipment.leftHand === null) {
+            effectiveBase = Math.round(weaponBase * 1.3);
+            baseLabel = `База (бонус руки x1.3): ${effectiveBase}`;
+        }
+
+        const formatReward = (reward) => {
+            if (!reward) return "";
+            if (typeof reward === 'string') return reward;
+            let p = [];
+            if (reward.damageCoef) {
+                let d = Math.round(effectiveBase * reward.damageCoef);
+                p.push(`Урон: ${skill.hits > 1 ? skill.hits+'x' : ''}${d} <small style="color:#666">(${effectiveBase}x${reward.damageCoef})</small>`);
+            }
+            if (reward.effect) p.push(...this.translateEffect(reward.effect));
+            if (reward.moveSelf) p.push(`Сам: ${reward.moveSelf > 0 ? 'Назад' : 'Вперед'} ${Math.abs(reward.moveSelf)}`);
+            if (reward.moveTarget) p.push(`Цель: ${reward.moveTarget > 0 ? 'Назад' : 'Вперед'} ${Math.abs(reward.moveTarget)}`);
+            return p.join(', ');
+        };
+
+        if (skill.isMove || skill.isRest) {
+            return { 
+                leftHTML: `<h4 style="color:#ffbf00; margin:0;">${skill.name.toUpperCase()}</h4><div class="tt-divider"></div><div class="tt-desc" style="border:none; padding:0;">${skill.description}</div>`, 
+                rightHTML: '' 
+            };
+        }
+
+        let leftHTML = `
+            <h4 style="color:#ffbf00; margin:0; text-transform:uppercase;">${skill.name}</h4>
+            <div class="tt-type">${skill.type === 'melee' ? '🗡 Ближний бой' : (skill.type === 'ranged' ? '🏹 Дальний бой' : '🛡 Поддержка')}</div>
+            <div class="tt-divider"></div>
+            ${this.getRangeHTML(skill)}
+            ${skill.uniqueCondition ? `<div class="tt-reward-line" style="margin-top:10px;"><b>Условие:</b> ${skill.uniqueCondition}<br><b>Награда:</b> ${formatReward(skill.uniqueConditionReward)}</div>` : ''}
+        `;
+
+        let sA = []; let tA = [];
+        
+        if (skill.moveTarget) tA.push(`<span class="tt-move">${skill.moveTarget > 0 ? 'Назад' : 'Вперед'} ${Math.abs(skill.moveTarget)}</span>`);
+        if (skill.moveSelf) sA.push(`<span class="tt-move">${skill.moveSelf > 0 ? 'Назад' : 'Вперед'} ${Math.abs(skill.moveSelf)}</span>`);
+        
+        if (skill.effect) {
+            const effectParts = skill.effect.split(',');
+            const translatedArray = this.translateEffect(skill.effect);
+            
+            effectParts.forEach((part, idx) => {
+                const p = part.trim().toLowerCase();
+                const isSelf = p.startsWith('self ') || skill.targetSelf || skill.targetAlly;
+                const txt = translatedArray[idx];
+                
+                if (isSelf) sA.push(`<span class="tt-buff">${txt}</span>`); 
+                else tA.push(`<span class="tt-debuff">${txt}</span>`);
+            });
+        }
+
+        let finalDmg = Math.round(effectiveBase * (skill.damageCoef || 0));
+
+        let rightHTML = `
+            <div style="display:flex; flex-direction:column; height: 100%;">
+                ${finalDmg > 0 ? `<div class="tt-dmg">Урон: ${(skill.hits > 1 ? skill.hits + 'x' : '')}${finalDmg} <small style="color:#555">(${effectiveBase} x ${skill.damageCoef})</small></div>` : ''}
+                ${tA.length > 0 ? `<div class="tt-action"><span class="tt-action-label">${skill.targetAlly ? 'Союзник' : 'Цель'}:</span> ${tA.join(', ')}</div>` : ''}
+                ${sA.length > 0 ? `<div class="tt-action" style="margin-top:3px;"><span class="tt-action-label">Сам погруженец:</span> ${sA.join(', ')}</div>` : ''}
+                ${skill.comboOrMarkImproveable ? `<div class="tt-combo" style="margin-top:5px;"><b>Комбо:</b> ${formatReward(skill.comboChanges)}</div>` : ''}
+                <div class="tt-divider"></div>
+                <div class="tt-desc">${skill.description || ''}</div>
+            </div>`;
+        return { leftHTML, rightHTML };
+    },
+
+    updateUI(activeUnit, skills, manager) {
+        this.renderTurnQueue();
+        const skillsRow = document.getElementById('b-skills-row');
+        if (!skillsRow) return;
+        skillsRow.innerHTML = '';
+        if (!activeUnit || activeUnit.side !== 'player' || manager.state === 'EXECUTING') return;
+
+        const mBtn = document.getElementById('b-btn-move');
+        mBtn.onclick = () => manager.selectMoveAction();
+        mBtn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { name: "Движение", description: "Смена позиции с соседним союзником.", isMove: true } };
+        mBtn.onmouseleave = () => this.hoveredObject = null;
+
+        const rBtn = document.getElementById('b-btn-rest');
+        rBtn.onclick = () => manager.performRest();
+        rBtn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { name: "Отдых", description: "Пропуск хода для восстановления сил.", isRest: true } };
+        rBtn.onmouseleave = () => this.hoveredObject = null;
+
+        const baseDmg = activeUnit.equipment?.rightHand?.baseDamage || 10;
+        skills.forEach(skill => {
+            let btn = document.createElement('button');
+            btn.className = 'skill-btn';
+            if (manager.selectedSkill?.id === skill.id) btn.classList.add('active');
+            btn.innerText = skill.name; 
+            if (!skill.validPos?.includes(activeUnit.posIdx)) btn.disabled = true;
+            let finalDmg = Math.round(baseDmg * (skill.damageCoef || 0));
+            btn.onclick = () => manager.selectSkill(skill);
+            btn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { ...skill, finalDmg } };
+            btn.onmouseleave = () => this.hoveredObject = null;
+            skillsRow.appendChild(btn);
+        });
     },
 
     setupInput() {
@@ -97,175 +238,56 @@ export const BattleScene = {
         };
     },
 
-    updateUI(activeUnit, skills, manager) {
-        const skillsPanel = document.getElementById('skills-panel');
-        const turnInfo = document.getElementById('turn-info');
-        skillsPanel.innerHTML = '';
-        this.hoveredSkillBtn = null;
-        if (!activeUnit || activeUnit.side !== 'player' || manager.state === 'EXECUTING') {
-            turnInfo.innerText = activeUnit?.side === 'enemy' ? "ХОД ПРОТИВНИКА" : "...";
-            return;
-        }
-        turnInfo.innerText = `Ход: ${activeUnit.name.split(' ')[0]}\n(Поз: ${activeUnit.posIdx})`;
-        let mBtn = document.createElement('button');
-        mBtn.className = 'skill-btn';
-        if (manager.state === 'SELECT_MOVE') mBtn.classList.add('active');
-        mBtn.innerText = 'ДВИЖЕНИЕ';
-        mBtn.onmousemove = (e) => this.showTooltip(e, { name: "ДВИЖЕНИЕ", isMove: true, description: "Смена позиции с соседним союзником." });
-        mBtn.onmouseout = () => this.hideTooltip();
-        mBtn.onclick = () => manager.selectMoveAction();
-        skillsPanel.appendChild(mBtn);
-        const baseDmg = activeUnit.equipment?.rightHand?.baseDamage || 10;
-        skills.forEach(skill => {
-            let btn = document.createElement('button');
-            btn.className = 'skill-btn';
-            if (manager.selectedSkill?.id === skill.id) btn.classList.add('active');
-            btn.innerText = skill.name; 
-            if (!skill.validPos?.includes(activeUnit.posIdx)) btn.disabled = true;
-            let finalDmg = Math.round(baseDmg * (skill.damageCoef || 0));
-            btn.onclick = () => manager.selectSkill(skill);
-            btn.onmousemove = (e) => this.showTooltip(e, { ...skill, finalDmg });
-            btn.onmouseout = () => this.hideTooltip();
-            skillsPanel.appendChild(btn);
-        });
-    },
-
-    showTooltip(e, skill) {
-        const tt = document.getElementById('battle-tooltip');
-        tt.classList.remove('hidden');
-        const cRect = document.getElementById('game-container').getBoundingClientRect();
-        tt.style.left = (e.clientX - cRect.left + 20) + 'px';
-        tt.style.top = (e.clientY - cRect.top - 200) + 'px';
-
-        const baseDmg = this.battleManager?.getActiveUnit()?.equipment?.rightHand?.baseDamage || 10;
-        const formatReward = (reward) => {
-            if (!reward) return "";
-            if (typeof reward === 'string') return reward;
-            let p = [];
-            if (reward.damageCoef) p.push(`Урон: ${skill.hits > 1 ? skill.hits+' x ' : ''}${Math.round(baseDmg * reward.damageCoef)}`);
-            if (reward.effect) p.push(...this.translateEffect(reward.effect));
-            if (reward.moveSelf) p.push(`Боец: ${reward.moveSelf > 0 ? 'Назад' : 'Вперед'} ${Math.abs(reward.moveSelf)}`);
-            if (reward.moveTarget) p.push(`Цель: ${reward.moveTarget > 0 ? 'Назад' : 'Вперед'} ${Math.abs(reward.moveTarget)}`);
-            return p.join(', ');
-        };
-
-        if (skill.isMove) {
-            tt.innerHTML = `<h4>${skill.name}</h4><div class="tt-divider"></div><div class="tt-desc">${skill.description}</div>`;
-            return;
-        }
-
-        let html = `<h4>${skill.name}</h4>`;
-        if (skill.type && skill.type !== 'none') {
-            html += `<div class="tt-type">${skill.type === 'melee' ? '🗡 Ближний бой' : '🏹 Дальний бой'}</div><div class="tt-divider"></div>`;
-        }
-        html += this.getRangeHTML(skill) + `<div class="tt-divider"></div>`;
-
-        if (skill.uniqueCondition) {
-            let rwd = formatReward(skill.uniqueConditionReward);
-            html += `<div class="tt-condition"><b>Условие:</b> ${skill.uniqueCondition}</div>`;
-            if (rwd) html += `<div class="tt-reward-line"><b>Награда:</b> ${rwd}</div>`;
-            html += `<div class="tt-divider"></div>`;
-        }
-
-        let selfActions = []; 
-        let targetActions = [];
-        let battleParts = [];
-
-        if (skill.finalDmg > 0) battleParts.push(`<div class="tt-dmg">Урон: ${skill.hits > 1 ? skill.hits+' x ' : ''}${skill.finalDmg}</div>`);
-        
-        if (skill.moveTarget) targetActions.push(`<span class="tt-move">${skill.moveTarget > 0 ? 'Назад' : 'Вперед'} ${Math.abs(skill.moveTarget)}</span>`);
-        if (skill.moveSelf) selfActions.push(`<span class="tt-move">${skill.moveSelf > 0 ? 'Назад' : 'Вперед'} ${Math.abs(skill.moveSelf)}</span>`);
-        
-        if (skill.effect) {
-            skill.effect.split(',').forEach(part => {
-                let txt = this.translateEffect(part.trim())[0];
-                if (part.trim().toLowerCase().startsWith('self ') || skill.targetSelf || skill.targetAlly) selfActions.push(`<span class="tt-buff">${txt}</span>`);
-                else targetActions.push(`<span class="tt-debuff">${txt}</span>`);
-            });
-        }
-
-        if (targetActions.length > 0) battleParts.push(`<div class="tt-action"><span class="tt-action-label">${skill.targetAlly ? 'Союзник' : 'Цель'}:</span> ${targetActions.join(', ')}</div>`);
-        if (selfActions.length > 0) battleParts.push(`<div class="tt-action"><span class="tt-action-label">Сам герой:</span> ${selfActions.join(', ')}</div>`);
-
-        if (battleParts.length > 0) html += `<div>${battleParts.join('')}</div><div class="tt-divider"></div>`;
-        if (skill.comboOrMarkImproveable && skill.comboChanges) {
-            html += `<div class="tt-combo"><b>При Метке/Комбо:</b> ${formatReward(skill.comboChanges)}</div><div class="tt-divider"></div>`;
-        }
-        if (skill.description) html += `<div class="tt-desc">${skill.description}</div>`;
-        
-        tt.innerHTML = html;
-        this.hoveredSkillBtn = skill;
-    },
-
-    hideTooltip() {
-        const tt = document.getElementById('battle-tooltip');
-        if (tt) tt.classList.add('hidden');
-        this.hoveredSkillBtn = null;
-    },
-
     draw(ctx, canvas) {
-        ctx.fillStyle = "#1a1612"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 100, canvas.width/2, canvas.height/2, 800);
-        grd.addColorStop(0, "#2a241e"); grd.addColorStop(1, "#0a0806");
-        ctx.fillStyle = grd; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0c0a08"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = "rgba(255, 191, 0, 0.3)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(canvas.width/2, 300); ctx.lineTo(canvas.width/2, 900); ctx.stroke();
-        this.hoverQueueUnit = null; let hFieldU = null;
+        ctx.beginPath(); ctx.moveTo(canvas.width/2, 200); ctx.lineTo(canvas.width/2, 800); ctx.stroke();
+
+        let hFieldU = null;
         this.gameUnits.forEach(u => { if (u.isClicked(this.mouseX, this.mouseY)) hFieldU = u; });
 
-        if (this.battleManager && this.battleManager.turnQueue.length > 0) {
-            let startX = (canvas.width / 2) - ((this.battleManager.turnQueue.length * 60) / 2);
-            this.battleManager.turnQueue.forEach((unit, index) => {
-                let boxX = startX + (index * 60); let boxY = 50;
-                let isH = (this.mouseX >= boxX && this.mouseX <= boxX + 50 && this.mouseY >= boxY && this.mouseY <= boxY + 50) || unit === hFieldU;
-                if (isH) { this.hoverQueueUnit = unit; unit.queueYOffset = 8; ctx.shadowBlur = 15; ctx.shadowColor = '#fff'; }
-                ctx.fillStyle = unit.side === 'player' ? '#4a90e2' : '#e24a4a'; ctx.fillRect(boxX, boxY + unit.queueYOffset, 50, 50);
-                ctx.strokeStyle = index === 0 ? '#ffbf00' : '#fff'; ctx.lineWidth = index === 0 ? 3 : (isH ? 2 : 1);
-                ctx.strokeRect(boxX, boxY + unit.queueYOffset, 50, 50);
-                ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.font = '10px Arial';
-                ctx.fillText(unit.name.split(' ')[0].substring(0, 5), boxX + 5, boxY + 30 + unit.queueYOffset);
-            });
+        document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('hover-highlight'));
+        const target = hFieldU || this.hoverQueueUnit;
+        if (target) {
+            const el = document.querySelector(`.queue-item[data-name="${target.name}"]`);
+            if (el) el.classList.add('hover-highlight');
+        }
+
+        const leftBox = document.getElementById('b-info-left');
+        const rightBox = document.getElementById('b-info-right');
+        if (leftBox && rightBox) {
+            if (this.hoveredObject?.type === 'skill') {
+                const info = this.getSkillDetailedHTML(this.hoveredObject.data);
+                leftBox.innerHTML = info.leftHTML; rightBox.innerHTML = info.rightHTML;
+            } else if (target) {
+                if (target.side === 'player') {
+                    leftBox.innerHTML = target.getTooltipHTML();
+                    rightBox.innerHTML = target.getEquipmentHTML();
+                } else {
+                    leftBox.innerHTML = '<div style="color:#444; padding:20px; text-align:center;">АНАЛИЗ ПРОТИВНИКА</div>';
+                    rightBox.innerHTML = target.getTooltipHTML();
+                }
+            } else {
+                leftBox.innerHTML = ''; rightBox.innerHTML = '';
+            }
         }
 
         if (this.battleManager && this.battleManager.state === 'SELECT_TARGET' && this.battleManager.selectedSkill?.isAoE) {
             let active = this.battleManager.getActiveUnit();
             let skill = this.battleManager.selectedSkill;
             let aoeTargets = this.gameUnits.filter(u => u.side !== active.side && !u.isDead && skill.targetPos.includes(u.posIdx));
-            
             if (aoeTargets.length > 1) {
                 aoeTargets.sort((a, b) => a.x - b.x);
-                let first = aoeTargets[0];
-                let last = aoeTargets[aoeTargets.length - 1];
+                let first = aoeTargets[0]; let last = aoeTargets[aoeTargets.length - 1];
                 let centerY = first.y + first.height / 2;
-
                 ctx.save();
                 let isHov = aoeTargets.some(u => u === hFieldU || u === this.hoverQueueUnit);
-                
-                ctx.shadowBlur = isHov ? 20 : 10;
-                ctx.shadowColor = isHov ? '#ff0000' : 'rgba(255, 68, 68, 0.5)';
-                
-                ctx.strokeStyle = isHov ? '#ff0000' : 'rgba(255, 68, 68, 0.4)';
-                ctx.lineWidth = isHov ? 6 : 3;
-                ctx.beginPath();
-                ctx.moveTo(first.x + first.width/2, centerY);
-                ctx.lineTo(last.x + last.width/2, centerY);
-                ctx.stroke();
-
-                ctx.lineWidth = isHov ? 4 : 2;
-                const capH = 15;
-
-                ctx.beginPath();
-                ctx.moveTo(first.x + 5, centerY - capH);
-                ctx.lineTo(first.x - 5, centerY);
-                ctx.lineTo(first.x + 5, centerY + capH);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(last.x + last.width - 5, centerY - capH);
-                ctx.lineTo(last.x + last.width + 5, centerY);
-                ctx.lineTo(last.x + last.width - 5, centerY + capH);
-                ctx.stroke();
-
+                ctx.shadowBlur = isHov ? 20 : 10; ctx.shadowColor = isHov ? '#ff0000' : 'rgba(255, 68, 68, 0.5)';
+                ctx.strokeStyle = isHov ? '#ff0000' : 'rgba(255, 68, 68, 0.4)'; ctx.lineWidth = isHov ? 6 : 3;
+                ctx.beginPath(); ctx.moveTo(first.x + first.width/2, centerY); ctx.lineTo(last.x + last.width/2, centerY); ctx.stroke();
+                ctx.lineWidth = isHov ? 4 : 2; const capH = 15;
+                ctx.beginPath(); ctx.moveTo(first.x + 5, centerY - capH); ctx.lineTo(first.x - 5, centerY); ctx.lineTo(first.x + 5, centerY + capH); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(last.x + last.width - 5, centerY - capH); ctx.lineTo(last.x + last.width + 5, centerY); ctx.lineTo(last.x + last.width - 5, centerY + capH); ctx.stroke();
                 ctx.restore();
             }
         }
@@ -281,17 +303,9 @@ export const BattleScene = {
                 } else if (active && this.battleManager.state === 'SELECT_MOVE') {
                     if (unit.side === active.side && unit !== active && Math.abs(unit.posIdx - active.posIdx) === 1) isP = true;
                 }
-                unit.draw(ctx, active === unit, isP, unit === this.hoverQueueUnit || unit === hFieldU);
+                unit.draw(ctx, active === unit, isP, unit === target);
             });
         }
-
-        const tt = document.getElementById('battle-tooltip');
-        let targetFTT = hFieldU || this.hoverQueueUnit;
-        if (targetFTT && !this.hoveredSkillBtn) {
-            tt.classList.remove('hidden');
-            tt.style.left = (this.mouseX + 20) + 'px'; tt.style.top = (this.mouseY - 50) + 'px';
-            tt.innerHTML = targetFTT.getTooltipHTML();
-        } else if (!this.hoveredSkillBtn) this.hideTooltip();
 
         this.damageTexts = this.damageTexts.filter(t => t.life > 0);
         this.damageTexts.forEach(t => { t.y -= 1.5; t.life--; ctx.fillStyle = t.color; ctx.font = "bold 40px Arial"; ctx.fillText(t.text, t.x, t.y); });
@@ -330,8 +344,8 @@ export const BattleScene = {
     },
 
     destroy() {
+        document.getElementById('ui-battle').innerHTML = '';
         document.getElementById('ui-battle').classList.add('hidden');
-        document.getElementById('battle-tooltip')?.classList.add('hidden'); 
         SceneManager.canvas.onmousedown = null;
         SceneManager.canvas.onmousemove = null;
     }
@@ -340,3 +354,5 @@ export const BattleScene = {
 window.spawnDamageText = (text, x, y, color) => {
     BattleScene.damageTexts.push({ text, x, y, color, life: 60 });
 };
+
+window.BattleScene = BattleScene;
