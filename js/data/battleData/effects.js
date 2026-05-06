@@ -11,7 +11,7 @@ export const EFFECTS = {
     
     TAUNT: { id: 'taunt', name: "Провокация", type: 'buff', icon: '🤹‍♂️', tickOn: 'turnEnd', duration: 2, description: "Заставляет врагов атаковать этого юнита" },
     MARK: { id: 'mark', name: "Метка", type: 'debuff', icon: '🎯', tickOn: 'skillReceived', duration: 2, description: "Уязвимость для спец-атак" },
-    BLEED: { id: 'bleed', name: "Кровотечение", type: 'dot', icon: '🩸', tickOn: 'turnStart', duration: 3, description: "Урон в начале хода" },
+    DOT: { id: 'dot', name: "Кровотечение", type: 'dot', icon: '🩸', tickOn: 'turnStart', duration: 3, description: "Урон в начале хода" },
     
     COMBO: { id: 'combo', name: "Комбо", type: 'buff', icon: '✨', tickOn: 'skillUsed', duration: 2 },
     PROTECTION: { id: 'protection', name: "Защита", type: 'buff', icon: '🧙‍♂️', tickOn: 'turnEnd', duration: 2 },
@@ -26,4 +26,12 @@ export const EFFECTS = {
     FEAR: { id: 'fear', name: "Испуг", type: 'debuff', icon: '😱', tickOn: 'turnEnd', duration: 1 },
     INSTABILITY: { id: 'instability', name: "Неустойчивость", type: 'debuff', icon: '💃', tickOn: 'hitReceived', duration: 2 },
     INWEB: { id: 'inWeb', name: "В паутине", type: 'debuff', icon: '🕸', tickOn: 'manual', duration: 1 },
+
+    IGNORARMOR: { id: 'ignorArmor', name: "Снятие брони", type: 'debuff', icon: '', tickOn: '', duration: 1},
+    IGNORDODGE: { id: 'ignorDodge', name: "Снятие уклонения", type: 'debuff', icon: '', tickOn: '', duration: 1},
+    IGNORPARRY: { id: 'ignorParry', name: "Снятие паррирования", type: 'debuff', icon: '', tickOn: '', duration: 1},
+    IGNORBLOCK: { id: 'ignorBlock', name: "Снятие блока", type: 'debuff', icon: '', tickOn: '', duration: 1},
+    REMOVETOKEN: { id: 'removeToken', name: "Снятие эффектов", type: 'debuff', icon: '', tickOn: '', duration: 1},
+
+    SHUFFLE: { id: 'shuffle', name: "Перемешивание", type: 'debuff', icon: '', tickOn: '', duration: 1},
 };

@@ -53,28 +53,28 @@ export const OUTFITS = {
     "Лёгкий доспех": {
         description: "Обеспечивает базовую защиту, не сковывая движений.",
         levels: {
-            1: { hp: 10, battle: 2, special: "Малый бонус к шансу удачной атаки" },
-            2: { hp: 20, battle: 4, special: "Средний бонус к шансу удачной атаки" },
-            3: { hp: 30, battle: 6, special: "Большой бонус к шансу удачной атаки" },
-            4: { hp: 40, battle: 8, special: "Максимальный бонус к шансу удачной атаки" }
+            1: { hp: 10, battle: 2, atkArmor: 2 },
+            2: { hp: 20, battle: 4, atkArmor: 4 },
+            3: { hp: 30, battle: 6, atkArmor: 6 },
+            4: { hp: 40, battle: 8, atkArmor: 8 }
         }
     },
     "Средний доспех": {
         description: "Баланс между защитой и мобильностью.",
         levels: {
-            1: { hp: 15, battle: 2, special: "Малый бонус к удаче и ослаблению врага" },
-            2: { hp: 25, battle: 4, special: "Средний бонус к удаче и ослаблению врага" },
-            3: { hp: 35, battle: 6, special: "Большой бонус к удаче и ослаблению врага" },
-            4: { hp: 45, battle: 8, special: "Максимальный бонус к удаче и ослаблению врага" }
+            1: { hp: 15, battle: 2, atkArmor: 1, defArmor: 1 },
+            2: { hp: 25, battle: 4, atkArmor: 2, defArmor: 2 },
+            3: { hp: 35, battle: 6, atkArmor: 3, defArmor: 3 },
+            4: { hp: 45, battle: 8, atkArmor: 4, defArmor: 4 }
         }
     },
     "Тяжёлый доспех": {
         description: "Толстые пластины металла и кости. Весьма тяжел.",
         levels: {
-            1: { hp: 10, battle: 2, special: "Малый шанс ослабить атаку врага" },
-            2: { hp: 20, battle: 4, special: "Средний шанс ослабить атаку врага" },
-            3: { hp: 30, battle: 6, special: "Большой шанс ослабить атаку врага" },
-            4: { hp: 40, battle: 8, special: "Максимальный шанс ослабить атаку врага" }
+            1: { hp: 10, battle: 2, defArmor: 2 },
+            2: { hp: 20, battle: 4, defArmor: 4 },
+            3: { hp: 30, battle: 6, defArmor: 6 },
+            4: { hp: 40, battle: 8, defArmor: 8 }
         }
     },
     "Роба рудокопа": {

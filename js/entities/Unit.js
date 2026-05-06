@@ -5,9 +5,13 @@ export class Unit {
         this.name = config.name;
         this.side = config.side; 
         this.posIdx = config.posIdx; 
-        this.hp = config.hp;
-        this.maxHp = config.maxHp || config.hp;
-        this.baseCombat = config.combat || 5; 
+        
+        this.maxHp = Number(config.maxHp) || Number(config.hp) || 40;
+        this.hp = Number(config.hp) || this.maxHp;  
+        this.maxStamina = Number(config.maxStamina) || Number(config.stamina) || 100;
+        this.stamina = Number(config.stamina) || this.maxStamina;
+        this.baseCombat = Number(config.combat) || 10; 
+
         this.x = this.side === 'player' ? -100 : 1100; 
         this.y = 600;
         this.width = 80;
@@ -16,13 +20,16 @@ export class Unit {
         this.offsetX = 0;
         this.isDead = false;
         this.skills = config.skills || [];
-        this.activeEffects = []; // [{ base: EFFECT, count: X, duration: Y, damagePerTurn: Z }]
+        this.activeEffects = []; 
         this.effectHitboxes = [];
+        this.queueYOffset = 0; 
     }
 
     get combatStat() {
         return (this.stats && this.stats.battle !== undefined) ? this.stats.battle : this.baseCombat;
     }
+
+    getAvailableSkills() { return []; }
 
     hasEffect(effectId) { return this.activeEffects.some(e => e.base.id === effectId); }
     getEffect(effectId) { return this.activeEffects.find(e => e.base.id === effectId); }
@@ -39,7 +46,6 @@ export class Unit {
 
     addEffect(effectConfig, count = 1, customParams = {}) {
         if (!effectConfig) return;
-
         const antagonists = { 'power': 'weakness', 'weakness': 'power', 'speed': 'daze', 'daze': 'speed', 'courage': 'stun', 'stun': 'courage' };
         let antId = antagonists[effectConfig.id];
         if (antId && this.hasEffect(antId)) {
@@ -49,34 +55,29 @@ export class Unit {
             count -= cancel;
             if (count <= 0) return;
         }
-
         if (effectConfig.id === 'weakness' && this.hasEffect('daze')) {
-            let daze = this.getEffect('daze');
-            let combo = Math.min(count, daze.count);
+            let combo = Math.min(count, this.getEffect('daze').count);
             this.modifyEffect('daze', -combo);
-            this.addEffect(EFFECTS.STUN, combo);
+            this.addEffect(EFFECTS.STUN, combo * 2); 
             count -= combo; if (count <= 0) return;
         }
         if (effectConfig.id === 'daze' && this.hasEffect('weakness')) {
             let weak = this.getEffect('weakness');
-            let combo = Math.min(count, weak.count);
             this.modifyEffect('weakness', -combo);
-            this.addEffect(EFFECTS.STUN, combo);
+            this.addEffect(EFFECTS.STUN, combo * 2);
             count -= combo; if (count <= 0) return;
         }
-
-        if (effectConfig.id === 'bleed') {
-            let ex = this.getEffect('bleed');
+        if (effectConfig.id === 'dot') {
+            let ex = this.getEffect('dot');
             if (ex) {
                 ex.duration += 1;
                 ex.damagePerTurn = (ex.damagePerTurn || 2) + 1;
                 if (customParams.damagePerTurn > ex.damagePerTurn) ex.damagePerTurn = customParams.damagePerTurn;
             } else {
-                this.activeEffects.push({ base: effectConfig, count: 1, duration: count, damagePerTurn: customParams.damagePerTurn || 2 });
+                this.activeEffects.push({ base: effectConfig, count: 1, duration: customParams.duration || 3, damagePerTurn: customParams.damagePerTurn || 2 });
             }
             return;
         }
-
         let existing = this.getEffect(effectConfig.id);
         if (existing) {
             existing.count += count;
@@ -89,17 +90,9 @@ export class Unit {
     tickEffectsByTrigger(triggerType) {
         for (let i = this.activeEffects.length - 1; i >= 0; i--) {
             let e = this.activeEffects[i];
-            
-            if (e.base.tickOn === triggerType) {
-                e.count -= 1;
-            } 
-            else if (triggerType === 'turnEnd' && e.duration !== undefined) {
-                e.duration -= 1;
-            }
-
-            if (e.count <= 0 || (e.duration !== undefined && e.duration <= 0)) {
-                this.activeEffects.splice(i, 1);
-            }
+            if (e.base.tickOn === triggerType) e.count -= 1;
+            else if (triggerType === 'turnEnd' && e.duration !== undefined && e.base.id !== 'stun') e.duration -= 1;
+            if (e.count <= 0 || (e.duration !== undefined && e.duration <= 0)) this.activeEffects.splice(i, 1);
         }
     }
 
@@ -111,28 +104,42 @@ export class Unit {
 
     update() {
         if (this.isDead) return;
-        const baseX = 960;
-        const gap = 60;
-        const spacing = 130;
-        
+        const baseX = 960, gap = 60, spacing = 130;
         if (this.side === 'player') this.targetX = baseX - gap - this.width - ((this.posIdx - 1) * spacing);
         else this.targetX = baseX + gap + ((this.posIdx - 1) * spacing);
-        
         this.x += (this.targetX - this.x) * 0.1;
         this.offsetX *= 0.8;
+        this.queueYOffset *= 0.8; 
     }
 
-    draw(ctx, isSelected, isPotentialTarget = false, isHovered = false) {
+    draw(ctx, isActiveTurn, isPotentialTarget = false, isHovered = false) {
         if (this.isDead) return;
         const drawX = this.x + this.offsetX;
+        const nameOnly = this.name.split(' ')[0];
         this.effectHitboxes = []; 
 
-        if (isPotentialTarget || isHovered) {
+        if (isActiveTurn || isPotentialTarget || isHovered) {
             ctx.save();
-            ctx.shadowColor = isPotentialTarget ? (this.side === 'player' ? '#4aa3df' : '#ff4444') : '#ffffff';
-            ctx.shadowBlur = isHovered ? 25 : 15; 
-            ctx.strokeStyle = ctx.shadowColor;
-            ctx.lineWidth = isHovered ? 6 : 4;
+            let color = '#ffffff';
+            let blur = 15;
+            let width = 2;
+
+            if (isActiveTurn) {
+                color = '#ffbf00'; blur = 30; width = 4;
+            } else if (isPotentialTarget && isHovered) {
+                color = this.side === 'player' ? '#00ccff' : '#ff0000'; 
+                blur = 35; width = 5;
+            } else if (isPotentialTarget) {
+                color = this.side === 'player' ? '#4aa3df' : '#ff4444'; 
+                blur = 15; width = 2;
+            } else if (isHovered) {
+                color = '#ffffff'; blur = 20; width = 2;
+            }
+
+            ctx.shadowColor = color;
+            ctx.shadowBlur = blur;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
             ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
             ctx.restore();
         }
@@ -141,29 +148,37 @@ export class Unit {
         ctx.beginPath(); ctx.ellipse(drawX + this.width/2, this.y + this.height, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
 
         ctx.fillStyle = this.side === 'player' ? '#4a90e2' : '#e24a4a';
-        ctx.strokeStyle = isSelected ? '#ffbf00' : '#fff';
-        ctx.lineWidth = isSelected ? 4 : 2;
+        ctx.strokeStyle = isActiveTurn ? '#ffbf00' : '#fff';
+        ctx.lineWidth = 2;
         ctx.fillRect(drawX, this.y, this.width, this.height);
         ctx.strokeRect(drawX, this.y, this.width, this.height);
 
+        let hpPercent = this.maxHp > 0 ? (this.hp / this.maxHp) : 0;
         ctx.fillStyle = '#333'; ctx.fillRect(drawX, this.y - 15, this.width, 6);
-        ctx.fillStyle = '#ff4444'; ctx.fillRect(drawX, this.y - 15, this.width * (this.hp / this.maxHp), 6);
-        
-        ctx.fillStyle = '#fff'; ctx.font = '14px Arial';
-        ctx.fillText(`${this.name} [P${this.posIdx}]`, drawX, this.y - 25);
+        ctx.fillStyle = '#ff4444'; ctx.fillRect(drawX, this.y - 15, this.width * hpPercent, 6);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial';
+        ctx.fillText(nameOnly, drawX, this.y - 25);
 
         if (this.activeEffects.length > 0) {
-            let effectY = this.y - 45;
-            let effectX = drawX;
-            
+            let effectY = this.y - 45, effectX = drawX;
             this.activeEffects.forEach(e => {
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 20px Arial';
+                ctx.fillStyle = '#fff'; ctx.font = '20px Arial';
                 ctx.fillText(e.base.icon, effectX, effectY);
                 this.effectHitboxes.push({ x: effectX, y: effectY - 20, width: 25, height: 25, data: e });
                 effectX += 28;
             });
         }
+    }
+
+    getTooltipHTML() {
+        return `<div class="unit-card-mini">
+                <h4 style="color: #ff4444; margin-bottom: 5px; text-transform:uppercase;">${this.name}</h4>
+                <div class="tt-divider"></div>
+                <div style="font-size:16px; color:#ffbf00;">⚔️ Бой: ${this.combatStat}</div>
+                <div style="font-size:16px; color:#ff6666; font-weight:bold;">❤️ HP: ${Math.floor(this.hp)}/${this.maxHp}</div>
+                <div class="tt-divider"></div>
+                <div style="font-size: 11px; color: #888;">Враждебная сущность недр.</div>
+            </div>`;
     }
 
     isClicked(mx, my) {

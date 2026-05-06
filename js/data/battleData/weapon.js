@@ -1,11 +1,11 @@
-import { DEFAULT_SWORD_SKILL, SWORD_SKILLS } from "./weaponSkills/swordSkills.js";
-import { DEFAULT_SPEAR_SKILL, SPEAR_SKILLS} from "./weaponSkills/spearSkills.js;"
-import { DEFAULT_HAMMER_SKILL, HAMMER_SKILLS} from "./weaponSkills/hammerSkills.js;"
-import { DEFAULT_AXE_SKILL, AXE_SKILLS} from "./weaponSkills/axeSkills.js;"
-import { DEFAULT_SLING_SKILL, SLING_SKILLS} from "./weaponSkills/slingSkills.js;"
-import { DEFAULT_CROSSBOW_SKILL, CROSSBOW_SKILLS} from "./weaponSkills/crossbowSkills.js;"
-import { DEFAULT_BOW_SKILL, BOW_SKILLS} from "./weaponSkills/bowSkills.js;"
-import { DEFAULT_ARQUEBUS_SKILL, ARQUEBUS_SKILLS} from "./weaponSkills/arquebusSkills.js;"
+import { DEFAULT_SWORD_SKILL, SWORD_SKILLS } from "../weaponSkills/swordSkills.js";
+import { DEFAULT_SPEAR_SKILL, SPEAR_SKILLS} from "../weaponSkills/spearSkills.js";
+import { DEFAULT_HAMMER_SKILL, HAMMER_SKILLS} from "../weaponSkills/hammerSkills.js";
+import { DEFAULT_AXE_SKILL, AXE_SKILLS} from "../weaponSkills/axeSkills.js";
+import { DEFAULT_SLING_SKILL, SLING_SKILLS} from "../weaponSkills/slingSkills.js";
+import { DEFAULT_CROSSBOW_SKILL, CROSSBOW_SKILLS} from "../weaponSkills/crossbowSkills.js";
+import { DEFAULT_BOW_SKILL, BOW_SKILLS} from "../weaponSkills/bowSkills.js";
+import { DEFAULT_ARQUEBUS_SKILL, ARQUEBUS_SKILLS} from "../weaponSkills/arquebusSkills.js";
 
 export const test_weapon = {
     debugSword: { 

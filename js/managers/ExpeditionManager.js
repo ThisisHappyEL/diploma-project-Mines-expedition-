@@ -92,10 +92,10 @@ export const ExpeditionManager = {
 
     getSquadTotalStats() {
         return GameState.currentSquad.reduce((acc, adv) => {
-            acc.mining += adv.mining || 0;
-            acc.scouting += adv.scouting || 0;
-            acc.construction += adv.building || 0;
-            acc.research += adv.research || 0;
+            acc.mining += window.HubManager.getStat(adv, 'mining');
+            acc.scouting += window.HubManager.getStat(adv, 'scouting');
+            acc.construction += window.HubManager.getStat(adv, 'construction');
+            acc.research += window.HubManager.getStat(adv, 'research');
             return acc;
         }, { mining: 0, scouting: 0, construction: 0, research: 0 });
     },

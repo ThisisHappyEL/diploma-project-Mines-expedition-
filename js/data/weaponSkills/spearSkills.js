@@ -56,12 +56,15 @@ export const SPEAR_SKILLS = {
         damageCoef: 0.6,
         moveSelf: 1,
         moveTarget: 1,
-        effect: 'weakness-1',
-        description: "Удар, отталкивающий бойца и цель друг от друга и накладывающий слабость на врага"
+        description: "Удар, отталкивающий бойца и цель друг от друга и накладывающий слабость на врага",
+        level2: { effect: 'weakness-1', },
+        level3: { effect: 'weakness-2' },
+        level4: { effect: 'weakness-2' },
     },
     spearBlock: {
         id: 'spearBlock',
         name: "Блок",
+        type: 'none',
         fromLevel: 2,
         damageCoef: 0,
         targetSelf: true,
@@ -79,8 +82,10 @@ export const SPEAR_SKILLS = {
         damageCoef: 0.6,
         targetPos: [3, 4],
         moveTarget: -2,
-        effect: 'mark-1',
         description: "Притягивает противника с дальней позиции на 2 клетки и вешает метку",
+        level2: { effect: 'mark-1', },
+        level3: { effect: 'mark-2' },
+        level4: { effect: 'mark-2' },
     },
     slashingStrike: {
         id: 'slashingStrike',
@@ -90,15 +95,18 @@ export const SPEAR_SKILLS = {
         isAoE: true,
         targetPos: [2, 3],
         description: "Удар по двум целям в центре, накладывающий кровотечение",
-        level3: { effect: 'DOT-2' },
-        level4: { effect: 'DOT-3' },
+        level2: { effect: 'DOT-3-2' },
+        level3: { effect: 'DOT-3-3' },
+        level4: { effect: 'DOT-3-4' },
     },
     notOneStepFurther: {
         id: 'notOneStepFurther',
         name: "Ни шагу дальше",
+        type: 'none',
         fromLevel: 3,
         damageCoef: 1.0,
         description: "Спецстойка: боец автоматически бьет любого врага, решившего подойти ближе",
+        level3: { damageCoef: 1.2 },
         level4: { damageCoef: 1.2 },
     },
     spearThrow: {
@@ -109,8 +117,11 @@ export const SPEAR_SKILLS = {
         damageCoef: 1.2,
         effect: 'weakness-1',
         comboOrMarkImproveable: true,
-        comboChanges: { damageCoef: 1.5, effect: 'weakness-2' },
-        description: "Мощный бросок копьем, накладывающий слабость"
+        comboChanges: { damageCoef: 1.5},
+        description: "Мощный бросок копьем, накладывающий слабость",
+        level2: { comboChanges: { effect: 'weakness-2' }, },
+        level3: { comboChanges: { effect: 'weakness-3' }, },
+        level4: { comboChanges: { effect: 'weakness-3' }, },
     },
     pole: {
         id: 'pole',
@@ -121,7 +132,9 @@ export const SPEAR_SKILLS = {
         damageCoef: 1.0,
         moveSelf: -2,
         moveTarget: 2,
-        effect: 'acceleration-2',
-        description: "Рывок вперед с ударом, отталкивающий цель и дающий бойцу ускорение"
+        description: "Рывок вперед с ударом, отталкивающий цель и дающий бойцу ускорение",
+        level2: { effect: 'speed-1', },
+        level3: { effect: 'speed-2', },
+        level4: { effect: 'speed-2', },
     }
 };

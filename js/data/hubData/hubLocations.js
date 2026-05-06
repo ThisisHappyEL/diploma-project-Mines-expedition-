@@ -47,4 +47,10 @@ export const HUB_LOCATIONS = [
         description: 'Огромное колесо-подъёмник. Путь в недра начинается здесь.',
         action: 'OPEN_EXPEDITION_MENU'
     },
+    {
+        id: 'warehouse',
+        name: 'Склад',
+        description: 'Ваши запасы снаряжения, оружия и материалов.',
+        action: 'OPEN_WAREHOUSE'
+    }
 ];

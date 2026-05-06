@@ -9,6 +9,7 @@ export class BattleManager {
         this.uiCallback = uiCallback; 
         this.logPanel = document.getElementById('log-panel');
         this.state = 'IDLE'; 
+        this.lastDiff = 0; // Для расчета критов кровотока
     }
 
     log(msg) {
@@ -18,28 +19,22 @@ export class BattleManager {
 
     getActiveUnit() { return this.turnQueue[0] || null; }
 
-    startBattle() {
-        this.log("БОЙ НАЧИНАЕТСЯ!");
-        this.generateTurnQueue(); 
-        this.startTurn();
-    }
+    startBattle() { this.log("БОЙ НАЧИНАЕТСЯ!"); this.generateTurnQueue(); this.startTurn(); }
 
     generateTurnQueue() {
         let aliveUnits = this.units.filter(u => !u.isDead);
         let initList = aliveUnits.map(u => {
             let roll = Math.floor(Math.random() * 5) + 1; 
-            let initScore = u.combatStat + roll;
-            this.baseInitiativeMap.set(u, initScore);
-            return { unit: u, score: initScore };
+            let score = u.combatStat + roll;
+            this.baseInitiativeMap.set(u, score);
+            return { unit: u, score: score };
         });
         this.sortQueue(initList);
         this.log("=== НОВЫЙ РАУНД ===");
     }
 
     sortQueue(initList = null) {
-        if (!initList) {
-            initList = this.turnQueue.map(u => ({ unit: u, score: this.baseInitiativeMap.get(u) || 5 }));
-        }
+        if (!initList) initList = this.turnQueue.map(u => ({ unit: u, score: this.baseInitiativeMap.get(u) || 10 }));
         initList.forEach(item => {
             if (item.unit.hasEffect('speed')) item.score += 5;
             if (item.unit.hasEffect('daze')) item.score -= 5;
@@ -62,52 +57,25 @@ export class BattleManager {
 
         this.state = 'EXECUTING';
 
-        if (active.hasEffect('inWeb')) {
-            this.log(`${active.name} вырывается из сетей!`);
-            active.removeEffect('inWeb');
-            active.addEffect(EFFECTS.SPEED, 1);
-            setTimeout(() => this.nextTurn(), 1000); return;
-        }
-
-        if (active.hasEffect('fear')) {
-            this.log(`${active.name} в панике атакует и отступает!`);
-            active.modifyEffect('fear', -1);
-            let target = this.units.find(u => u.side !== active.side && !u.isDead && u.posIdx === 1);
-            if (target) {
-                target.takeDamage(5);
-                window.spawnDamageText("-5", target.x + 20, target.y - 20, "#ff4444");
-            }
-            this.moveUnit(active, 2);
-            setTimeout(() => this.nextTurn(), 1000); return;
-        }
-
         if (active.hasEffect('stun')) {
             this.log(`<span style="color:#ffbf00">${active.name.toUpperCase()} ПРОПУСКАЕТ ХОД (ОГЛУШЕНИЕ).</span>`);
-            
             active.modifyEffect('stun', -1); 
-            
             window.spawnDamageText("ПРОПУСК", active.x, active.y - 60, "#aaa");
-            
-            setTimeout(() => {
-                this.turnQueue.shift();
-                this.state = 'IDLE';
-                this.startTurn();
-            }, 1000); 
+            setTimeout(() => { this.turnQueue.shift(); this.state = 'IDLE'; this.startTurn(); }, 1000); 
             return;
         }
 
-        let bleed = active.getEffect('bleed');
-        if (bleed) {
-            let dmg = bleed.damagePerTurn || 2;
+        let dot = active.getEffect('dot');
+        if (dot) {
+            let dmg = dot.damagePerTurn || 2;
             active.takeDamage(dmg);
             window.spawnDamageText(`-${dmg}`, active.x + 20, active.y - 20, '#ff6666');
             this.log(`${active.name} кровоточит (-${dmg})`);
         }
-
+        
         this.log(`--- ХОД: ${active.name.toUpperCase()} ---`);
         this.state = 'IDLE';
         this.selectedSkill = null;
-
         this.uiCallback(active, active.side === 'player' ? active.getAvailableSkills() : [], this);
         if (active.side === 'enemy') setTimeout(() => this.enemyTurn(active), 1000);
     }
@@ -141,7 +109,7 @@ export class BattleManager {
         } 
         else if (this.state === 'SELECT_MOVE') {
             if (targetUnit.side !== active.side || targetUnit === active) return;
-            if (Math.abs(active.posIdx - targetUnit.posIdx) > 1) { this.log("Только на соседнюю позицию!"); return; }
+            if (Math.abs(active.posIdx - targetUnit.posIdx) > 1) return;
             this.performBasicMove(targetUnit);
         }
     }
@@ -152,15 +120,10 @@ export class BattleManager {
         let skill = { ...this.selectedSkill };
         let baseDmg = attacker.equipment?.rightHand?.baseDamage || 10;
 
-        if (!skill.targetAlly && !skill.targetSelf && primaryTarget.hasEffect('underProtection')) {
-            let protector = this.units.find(u => u.side === primaryTarget.side && u.hasEffect('protection') && !u.isDead);
-            if (protector) { primaryTarget = protector; this.log(`[Защита] Удар принят на себя!`); }
-        }
-
         if (primaryTarget.hasEffect('mark') && skill.comboOrMarkImproveable && skill.comboChanges) {
             Object.assign(skill, skill.comboChanges);
             primaryTarget.modifyEffect('mark', -1); 
-            this.log(`[СИНЕРГИЯ] Уязвимость цели использована!`);
+            this.log(`<span style="color:#ffbf00">[СИНЕРГИЯ] Уязвимость цели использована!</span>`);
         }
 
         attacker.offsetX = attacker.side === 'player' ? 30 : -30; 
@@ -173,99 +136,103 @@ export class BattleManager {
                 targets.forEach(target => {
                     if (target.isDead) return;
 
+                    let luckMod = 1.0; 
+                    let dmgColor = '#ffffff'; 
+                    let hitType = "ОБЫЧНЫЙ";
+                    let isLucky = false; 
+                    let isUnlucky = false;
+
                     if (skill.damageCoef === 0 && (skill.targetSelf || skill.targetAlly)) {
                         if (i === 0) window.spawnDamageText(`+БАФФ`, target.x, target.y - 40, '#4affab');
-                        if (i === hitsCount - 1) {
-                            if (skill.effect) this.applySkillEffects(target, skill.effect, false, false);
+                    } else {
+                        if (target.hasEffect('dodge') && !skill.effect?.includes('ignorEvasion')) {
+                            target.modifyEffect('dodge', -1);
+                            window.spawnDamageText("УВОРОТ", target.x + 10, target.y - 40, "#fff");
+                            return;
                         }
-                        return;
-                    }
 
-                    if (target.hasEffect('dodge') && !skill.effect?.includes('ignorEvasion')) {
-                        target.modifyEffect('dodge', -1);
-                        window.spawnDamageText("УВОРОТ", target.x + 10, target.y - 40, "#fff");
-                        return;
-                    }
-
-                    let luckMod = 1.0; let dmgColor = '#ffffff'; 
-                    let isLucky = false; let isUnlucky = false;
-                    let atkR = Math.floor(Math.random() * 5) + 1; 
-                    let defR = Math.floor(Math.random() * 5) + 1; 
-                    let aStat = attacker.combatStat; let dStat = target.combatStat;
-                    
-                    let aMods = ""; let dLogs = "";
-                    if (attacker.hasEffect('speed')) { aStat += 2; aMods += " <span style='color:#4affab'>+2(Уск)</span>"; }
-                    if (attacker.hasEffect('daze')) { aStat -= 2; aMods += " <span style='color:#ff4444'>-2(Ошел)</span>"; }
-                    if (target.hasEffect('speed')) { dStat += 2; dLogs += " <span style='color:#4affab'>+2(Уск)</span>"; }
-                    if (target.hasEffect('daze')) { dStat -= 2; dLogs += " <span style='color:#ff4444'>-2(Ошел)</span>"; }
-
-                    let atkTotal = aStat + atkR;
-                    let defTotal = dStat + defR;
-                    let diff = atkTotal - defTotal;
-                    
-                    let combatLog = `⚔️ [${attacker.name}](${attacker.combatStat}${aMods} + 🎲${atkR}=<b>${atkTotal}</b>) vs [${target.name}](${target.combatStat}${dLogs} + 🎲${defR}=<b>${defTotal}</b>). Разница: ${diff}.`;
-
-                    if (diff >= 10) { luckMod = 2.0; isLucky = true; this.log(`${combatLog} <span style="color:#ff00ff">КРИТ!</span>`); }
-                    else if (diff > 5) { luckMod = 1.5; isLucky = true; this.log(`${combatLog} <span style="color:#4affab">УДАЧНО!</span>`); }
-                    else if (diff < -5) { luckMod = 0.5; isUnlucky = true; this.log(`${combatLog} <span style="color:#ff4444">ПЛОХО.</span>`); }
-                    else { this.log(`${combatLog} <span style="color:#aaa">ОБЫЧНЫЙ.</span>`); }
-
-                    let finalDmg = Math.floor(baseDmg * skill.damageCoef * luckMod);
-
-                    if (attacker.hasEffect('weakness')) { finalDmg = Math.floor(finalDmg * 0.5); attacker.modifyEffect('weakness', -1); }
-                    if (attacker.hasEffect('power')) { finalDmg = Math.floor(finalDmg * 1.5); attacker.modifyEffect('power', -1); }
-                    if (target.hasEffect('vulnerable')) { finalDmg = Math.floor(finalDmg * 1.5); }
-                    if (target.hasEffect('block') && !skill.effect?.includes('ignorArmor')) { finalDmg = Math.floor(finalDmg * 0.5); target.modifyEffect('block', -1); }
-
-                    if (finalDmg > 0) {
-                        target.takeDamage(finalDmg);
-                        window.spawnDamageText(`-${finalDmg}`, target.x + 20 + ((Math.random()*20)-10), target.y - 20 - (i*15), dmgColor);
-                        target.tickEffectsByTrigger('hitReceived');
-                        attacker.tickEffectsByTrigger('hitGiven');
+                        let atkR = Math.floor(Math.random() * 5) + 1; 
+                        let defR = Math.floor(Math.random() * 5) + 1; 
+                        let aStat = Number(attacker.combatStat);
+                        let dStat = Number(target.combatStat);
+                        let aArmor = attacker.stats?.atkArmor || 0;
+                        let dArmor = target.stats?.defArmor || 0;
                         
-                        if (target.hasEffect('aGapingWound')) {
-                            target.modifyEffect('aGapingWound', -1);
-                            target.addEffect(EFFECTS.BLEED, 1, { duration: 3, damagePerTurn: 2 });
+                        let aModLog = "";
+                        if (attacker.hasEffect('speed')) { aStat += 2; aModLog += "+2(Уск)"; }
+                        if (attacker.hasEffect('daze')) { aStat -= 2; aModLog += "-2(Ошел)"; }
+
+                        let diff = (aStat + atkR + aArmor) - (dStat + defR + dArmor);
+                        this.lastDiff = diff;
+
+                        if (diff >= 5) { luckMod = 1.5; hitType = "УДАЧНЫЙ"; isLucky = true; dmgColor = (attacker.side==='player'?'#4affab':'#ff4444'); }
+                        else if (diff <= -5) { luckMod = 0.5; hitType = "НЕУДАЧНЫЙ"; isUnlucky = true; dmgColor = (attacker.side==='player'?'#ff4444':'#4affab'); }
+
+                        if (hitType === "УДАЧНЫЙ" && attacker.hasEffect('power')) { luckMod = 2.0; hitType = "КРИТИЧЕСКИЙ"; dmgColor = "#ff00ff"; }
+                        if (hitType === "НЕУДАЧНЫЙ" && attacker.hasEffect('weakness')) { 
+                            this.log(`⚔️ [${attacker.name}] vs [${target.name}]. Разница: ${diff}. ПРОМАХ.`);
+                            window.spawnDamageText("ПРОМАХ", target.x + 10, target.y - 40, "#aaa"); return; 
+                        }
+
+                        this.log(`⚔️ [${attacker.name}] vs [${target.name}]. Разн: ${diff}. ${hitType} УДАР!`);
+
+                        let finalDmg = Math.floor(baseDmg * skill.damageCoef * luckMod);
+                        if (target.hasEffect('vulnerable')) finalDmg = Math.floor(finalDmg * 1.5);
+                        if (target.hasEffect('block') && !skill.effect?.includes('ignorArmor')) { finalDmg = Math.floor(finalDmg * 0.5); target.modifyEffect('block', -1); }
+
+                        if (i === 0) {
+                            if (attacker.hasEffect('power')) attacker.modifyEffect('power', -1);
+                            if (attacker.hasEffect('weakness')) attacker.modifyEffect('weakness', -1);
+                        }
+
+                        if (finalDmg > 0) {
+                            target.takeDamage(finalDmg);
+                            window.spawnDamageText(`-${finalDmg}`, target.x + 20, target.y - 20, dmgColor);
+                            target.tickEffectsByTrigger('hitReceived');
+                            attacker.tickEffectsByTrigger('hitGiven');
+                            if (target.hasEffect('aGapingWound')) {
+                                target.modifyEffect('aGapingWound', -1);
+                                target.addEffect(EFFECTS.DOT, 1, { duration: 3, damagePerTurn: 2 });
+                            }
                         }
                     }
 
                     if (i === hitsCount - 1) {
-                        if (skill.effect) this.applySkillEffects(target, skill.effect, isLucky, isUnlucky);
-                        this.checkParrying(attacker, target, skill);
+                        if (skill.effect) this.applySkillEffects(target, skill.effect, isLucky, isUnlucky, attacker);
+                        if (target.hasEffect('parry') && !skill.effect?.includes('ignorParrying') && attacker !== target && !skill.targetAlly) {
+                            target.modifyEffect('parry', -1);
+                            let cDmg = target.equipment?.rightHand?.baseDamage || 10;
+                            attacker.takeDamage(cDmg);
+                            window.spawnDamageText(`-${cDmg}`, attacker.x + 20, attacker.y - 20, '#ffbb00');
+                        }
                     }
                 });
-
-                if (i === hitsCount - 1) {
-                    setTimeout(() => this.finalizeSkill(attacker, primaryTarget, skill), 500);
-                }
+                if (i === hitsCount - 1) setTimeout(() => this.finalizeSkill(attacker, primaryTarget, skill), 500);
             }, i * 300);
         }
     }
 
-    checkParrying(attacker, target, skill) {
-        if (target.hasEffect('parry') && !skill.effect?.includes('ignorParrying') && attacker !== target && !skill.targetAlly) {
-            target.modifyEffect('parry', -1);
-            this.log(`[Контратака!]`);
-            let cDmg = target.equipment?.rightHand?.baseDamage || 10;
-            attacker.takeDamage(cDmg);
-            window.spawnDamageText(`-${cDmg}`, attacker.x + 20, attacker.y - 20, '#ffbb00');
-        }
-    }
-
-    applySkillEffects(target, effectString, isLucky, isUnlucky) {
-        const ALIASES = { 'DOT': 'BLEED', 'FRAGILE': 'VULNERABLE', 'PARRYING': 'PARRY' };
+    applySkillEffects(target, effectString, isLucky, isUnlucky, attacker = null) {
+        if (!effectString) return;
+        const ALIASES = { 'DOT': 'DOT', 'FRAGILE': 'VULNERABLE', 'PARRYING': 'PARRY' };
         effectString.split(',').forEach(part => {
-            const params = part.trim().split('-');
-            let id = params[0].toUpperCase();
-            if (ALIASES[id]) id = ALIASES[id];
+            let p = part.trim(); let curTarget = target;
+            if (p.toLowerCase().startsWith('self ')) { p = p.substring(5).trim(); curTarget = attacker; }
+            if (!curTarget) return;
+
+            const params = p.split('-');
+            let id = params[0].toUpperCase(); if (ALIASES[id]) id = ALIASES[id];
             const val = parseInt(params[1]) || 1;
             
-            if (id === 'BLEED') {
-                let dur = 3; if (isLucky) dur = 4; if (isUnlucky) dur = 2;
-                target.addEffect(EFFECTS.BLEED, 1, { duration: dur, damagePerTurn: val });
+            if (id === 'DOT') {
+                let dur = 3; 
+                if (this.lastDiff >= 10) dur = 5;
+                else if (isLucky) dur = 4; 
+                else if (isUnlucky) dur = 2;
+                curTarget.addEffect(EFFECTS.DOT, 1, { duration: dur, damagePerTurn: val });
             } else if (EFFECTS[id]) {
-                target.addEffect(EFFECTS[id], val);
-                if (id === 'DAZE' || id === 'SPEED') this.updateQueueInitiative();
+                curTarget.addEffect(EFFECTS[id], val);
+                if ((id === 'DAZE' || id === 'SPEED') && curTarget === target) this.updateQueueInitiative();
             }
         });
     }
@@ -273,12 +240,6 @@ export class BattleManager {
     finalizeSkill(attacker, primaryTarget, skill) {
         if (skill && skill.moveSelf) this.moveUnit(attacker, skill.moveSelf);
         if (skill && skill.moveTarget && primaryTarget !== attacker) this.moveUnit(primaryTarget, skill.moveTarget);
-        
-        if (attacker.hasEffect('courage')) {
-            attacker.removeEffect('courage');
-            this.turnQueue.unshift(attacker);
-            this.log(`${attacker.name} действует снова!`);
-        }
         this.nextTurn();
     }
 
@@ -291,14 +252,7 @@ export class BattleManager {
 
     moveUnit(unit, offset) {
         let newPos = Math.max(1, Math.min(4, unit.posIdx + offset));
-        if (newPos !== unit.posIdx) {
-            let enemyCheck = this.units.find(u => u.side !== unit.side && u.hasEffect('noOneStepFurther') && offset < 0 && !u.isDead);
-            if (enemyCheck) {
-                unit.takeDamage(5);
-                window.spawnDamageText("-5", unit.x + 20, unit.y - 20, '#ffbb00');
-            }
-            this.shiftUnits(unit, newPos);
-        }
+        if (newPos !== unit.posIdx) this.shiftUnits(unit, newPos);
     }
 
     shiftUnits(movingUnit, targetPos) {
@@ -321,12 +275,11 @@ export class BattleManager {
         if (enemy.isDead) { this.nextTurn(); return; }
         this.state = 'EXECUTING';
         enemy.offsetX = -40; 
-        let target = this.units.find(u => u.side === 'player' && !u.isDead && (!enemy.hasEffect('taunt') || u.hasEffect('taunt')));
-        if (!target) target = this.units.find(u => u.side === 'player' && !u.isDead);
+        let target = this.units.find(u => u.side === 'player' && !u.isDead);
         if (target) {
             this.selectedSkill = (enemy.skills && enemy.skills.length > 0) ? enemy.skills[0] : { name: "Укус", damageCoef: 0.5 };
             this.executeSkill(enemy, target);
-        } else { setTimeout(() => this.nextTurn(), 1000); }
+        } else setTimeout(() => this.nextTurn(), 1000);
     }
 
     nextTurn() {
