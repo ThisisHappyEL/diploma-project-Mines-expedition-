@@ -211,7 +211,9 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
 .tab-btn { background: #1a1612; color: #888; border: 1px solid #555; padding: 8px 16px; cursor: pointer; font-size: 14px; }
 .tab-btn.active { background: #3d352e; color: #ffbf00; border-color: #ffbf00; border-bottom: none; }
 
-/* --- СЦЕНЫ EXPLORE/BATTLE (НЕ ИЗМЕНЕНО) --- */
+/* ========================================================== */
+/* --- СЦЕНА EXPLORE (Исследование) --- */
+/* ========================================================== */
 #ui-explore { color: white; display: flex; flex-direction: column; padding-top: 40px; }
 #explore-header { display: flex; align-items: center; gap: 30px; padding: 20px 40px; background: rgba(0,0,0,0.5); }
 #explore-layout { display: flex; padding: 20px 40px; gap: 30px; flex: 1; overflow: hidden; }
@@ -239,100 +241,10 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
 #expedition-summary { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 2000; pointer-events: auto; }
 .summary-content { background: #1a1612; border: 2px solid #ffbf00; padding: 30px; width: 500px; }
 .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
-#ui-battle { pointer-events: none !important; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-#ui-battle-bottom { width: 90%; height: 220px; background: rgba(20, 15, 12, 0.95); border: 2px solid #ffbf00; display: flex; padding: 15px; gap: 20px; pointer-events: auto; }
-#turn-info { flex: 0 0 200px; font-size: 20px; color: #ffbf00; font-weight: bold; border-right: 1px solid #444; }
-#skills-panel { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-content: center; }
-#log-panel { flex: 0 0 350px; font-size: 13px; color: #aaa; overflow-y: auto; border-left: 1px solid #444; padding-left: 15px; display: flex; flex-direction: column-reverse; }
-.skill-btn { background: #2a241e; color: #e0d8c3; border: 1px solid #888; padding: 10px 15px; cursor: pointer; font-size: 14px; min-width: 120px; transition: 0.2s; }
-.skill-btn:hover:not(:disabled) { background: #ffbf00; color: #000; }
-.skill-btn.active { border-color: #ffbf00; box-shadow: 0 0 10px #ffbf00; background: #3d352e; }
-.skill-btn:disabled {
-    opacity: 0.25 !important;
-    cursor: not-allowed !important;
-    border-color: #333 !important;
-    background: #111 !important;
-    color: #666 !important;
-    box-shadow: none !important;
-}
 
-#battle-tooltip {
-    position: absolute;
-    background: rgba(20, 15, 12, 0.95);
-    border: 2px solid #ffbf00;
-    color: #e0d8c3;
-    padding: 12px;
-    font-size: 13px;
-    pointer-events: none; /* Важно: чтобы мышка не "застревала" в тултипе */
-    z-index: 9999;
-    min-width: 250px;
-    box-shadow: 0 0 15px rgba(0,0,0,0.8);
-    border-radius: 4px;
-}
-
-#battle-tooltip h4 { margin: 0 0 5px 0; color: #ffbf00; font-size: 16px; }
-#battle-tooltip .effect-text { color: #ff6666; font-weight: bold; margin-top: 5px; }
-
-.pos-container { display: flex; align-items: center; gap: 15px; margin: 10px 0; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 4px; justify-content: center; }
-.pos-group { display: flex; gap: 4px; }
-.pos-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #555; background: #111; }
-.pos-dot.yellow { background: #ffaa44; border-color: #ffbf00; }
-.pos-dot.red { background: #ff4444; border-color: #ffaa44; }
-.pos-dot.green { background: #4affab; border-color: #22ff88; }
-.pos-dot.self { background: #fff; border-color: #fff; }
-.aoe-line-container { position: relative; display: flex; gap: 4px; }
-.aoe-line { position: absolute; top: 5px; left: 2px; right: 2px; height: 2px; background: #ff4444; z-index: 1; }
-.aoe-dot { z-index: 2; position: relative; }
-
-.tt-divider {
-    height: 1px;
-    background: #444;
-    margin: 8px 0;
-    width: 100%;
-}
-
-.tt-type { color: #888; font-style: italic; font-size: 14px; margin-bottom: 5px; }
-.tt-desc { color: #ccc; margin-top: auto; line-height: 1.3; font-size: 14px; border-top: 1px solid #444; padding-top: 8px; }
-.tt-desc { color: #ccc; margin-bottom: 5px; line-height: 1.3; }
-
-/* Блоки Синергии и Условий */
-.tt-condition { background: rgba(255, 191, 0, 0.1); padding: 5px; border-left: 2px solid #ffbf00; margin-bottom: 5px; }
-.tt-combo { background: rgba(74, 255, 171, 0.1); padding: 5px; border-left: 2px solid #4affab; }
-
-/* Эффекты и движения */
-.tt-action { color: #e0d8c3; margin-top: 4px; }
-.tt-action-label { color: #ffbf00; font-weight: bold; }
-.tt-move { color: #b19cd9 !important; font-weight: bold; } /* Фиолетовый для движений */
-.tt-buff { color: #4affab !important; font-weight: bold; }   /* Зеленый для баффов */
-.tt-debuff { color: #ff6666 !important; font-weight: bold; } /* Красный для дебаффов/урона */
-.tt-reward-line {
-    background: rgba(255, 215, 0, 0.15); /* Золотистый фон */
-    border-left: 2px solid #ffbf00;
-    padding: 4px 8px;
-    margin-top: 4px;
-    color: #fff;
-    font-size: 12px;
-}
-
-.unit-card-mini {
-    min-width: 220px;
-    font-family: 'Segoe UI', sans-serif;
-}
-
-.unit-card-mini h3 {
-    font-size: 18px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.unit-card-mini .tt-divider {
-    height: 1px;
-    background: linear-gradient(to right, transparent, #555, transparent);
-    margin: 8px 0;
-}
-
-/* Экспериментальный интерфейс*/
-
+/* ========================================================== */
+/* --- СЦЕНА БОЯ (Battle Scene) --- */
+/* ========================================================== */
 #ui-battle { pointer-events: none !important; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
 
 /* Трапеция сверху */
@@ -344,10 +256,36 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
     pointer-events: auto; display: flex; flex-direction: column; align-items: center;
 }
 
-#b-log-btn { 
-    position: absolute; top: 10px; right: 10px; 
-    z-index: 1100; pointer-events: auto;
+#b-log-btn { position: absolute; top: 10px; right: 10px; z-index: 1100; pointer-events: auto; }
+
+/* Выпадающий лог */
+#b-log-container {
+    position: absolute; top: 55px; right: 10px; 
+    width: 380px; height: 350px;
+    background: rgba(15, 12, 10, 0.98); 
+    border: 1px solid #ffbf00;
+    display: flex; flex-direction: column-reverse;
+    padding: 10px; overflow-y: scroll;
+    font-size: 12px; color: #aaa; pointer-events: auto; z-index: 1050;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
 }
+#b-log-container::-webkit-scrollbar { width: 6px; }
+#b-log-container::-webkit-scrollbar-thumb { background: #3d352e; border: 1px solid #ffbf00; }
+
+/* Очередь ходов */
+#b-turn-queue { display: flex; gap: 8px; justify-content: center; margin-top: 5px; width: 100%; }
+.queue-item {
+    width: 45px; height: 45px; border: 1px solid #555;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: bold; color: #fff;
+    position: relative; transition: transform 0.2s, margin-top 0.2s;
+}
+.queue-item.active { border: 2px solid #ffbf00; box-shadow: 0 0 10px #ffbf00; }
+.queue-item.player { background: #4a90e2; }
+.queue-item.enemy { background: #e24a4a; }
+.queue-item:hover { margin-top: 5px; transform: scale(1.1); border-color: #fff; }
+.queue-item.hover-highlight { border-color: #fff !important; transform: translateY(10px); box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+.queue-item.active.hover-highlight { border-color: #fff !important; box-shadow: 0 0 20px #ffbf00, 0 0 10px #fff; transform: scale(1.15) translateY(5px); }
 
 /* Трапеция снизу */
 #b-bottom-bar {
@@ -358,106 +296,61 @@ canvas { width: 100%; height: 100%; background: #000; position: absolute; top: 0
     display: flex; justify-content: space-between; pointer-events: auto;
 }
 
+/* Боковые кнопки (Движение / Отдых) */
 .b-action-tab {
-    width: 180px; height: 100%; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-family: Georgia, serif; font-weight: bold; font-size: 18px;
-    color: #888; transition: 0.3s; background: rgba(0,0,0,0.2);
+    width: 180px; height: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-family: Georgia, serif; font-weight: bold; font-size: 18px; color: #888; transition: 0.3s; background: rgba(0,0,0,0.2);
 }
-
 .b-action-tab:hover { color: #ffbf00; background: rgba(255, 191, 0, 0.05); }
-
-#b-main-area { flex: 1; display: flex; flex-direction: column; padding: 10px 20px; }
-
-#b-info-row { display: flex; height: 130px; gap: 20px; margin-bottom: 10px; }
-.b-info-block { flex: 1; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 4px; overflow: hidden; }
-
 #b-btn-move { clip-path: polygon(0 100%, 0 20%, 50% 0, 100% 0, 100% 100%); border-right: 1px solid #333; }
 #b-btn-rest { clip-path: polygon(0 0, 50% 0, 100% 20%, 100% 100%, 0 100%); border-left: 1px solid #333; }
 
-/* Центр нижней панели (Быстрая инфа + Кнопки) */
-#b-center-zone { flex: 1; display: flex; flex-direction: column; align-items: center; }
-#b-quick-info { height: 60px; text-align: center; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;}
-#b-skills-row {
-    display: flex; gap: 8px; justify-content: center; align-items: center;
-    border-top: 1px solid #444; padding-top: 15px; height: 80px;
-}
+/* Центральная зона скиллов и инфо-панелей */
+#b-main-area { flex: 1; display: flex; flex-direction: column; padding: 10px 20px; }
+#b-info-row { display: flex; height: 130px; gap: 20px; margin-bottom: 10px; }
+.b-info-block { flex: 1; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 4px; overflow: hidden; }
+#b-skills-row { display: flex; gap: 8px; justify-content: center; align-items: center; border-top: 1px solid #444; padding-top: 15px; height: 80px; }
 
-/* Выпадающий лог */
-#b-log-container {
-    position: absolute; top: 55px; right: 10px; 
-    width: 380px; height: 350px;
-    background: rgba(15, 12, 10, 0.98); 
-    border: 1px solid #ffbf00;
-    display: flex; flex-direction: column-reverse; /* Новые сообщения сверху */
-    padding: 10px; overflow-y: scroll; /* Принудительный скролл */
-    font-size: 12px; color: #aaa; pointer-events: auto; z-index: 1050;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-}
-
-#b-log-container::-webkit-scrollbar { width: 6px; }
-#b-log-container::-webkit-scrollbar-thumb { background: #3d352e; border: 1px solid #ffbf00; }
-
+/* Кнопки скиллов */
 .skill-btn {
-    min-width: 140px; height: 65px;
-    background: #2a241e; border: 1px solid #666;
-    color: #e0d8c3; cursor: pointer; font-size: 14px; 
-    transition: 0.2s;
+    min-width: 140px; height: 65px; background: #2a241e; border: 1px solid #666;
+    color: #e0d8c3; cursor: pointer; font-size: 14px; transition: 0.2s;
 }
+.skill-btn:hover:not(:disabled) { background: #ffbf00; color: #000; }
+.skill-btn.active { border-color: #ffbf00; box-shadow: 0 0 10px #ffbf00; background: #3d352e; }
+.skill-btn:disabled { opacity: 0.25 !important; cursor: not-allowed !important; border-color: #333 !important; background: #111 !important; color: #666 !important; box-shadow: none !important; }
 
-#b-turn-queue {
-    display: flex; gap: 8px; justify-content: center;
-    margin-top: 5px; width: 100%;
-}
+/* Внутренности Info Panels (Тултипы скиллов и героев) */
+.pos-container { display: flex; align-items: center; gap: 15px; margin: 10px 0; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 4px; justify-content: center; }
+.pos-group { display: flex; gap: 4px; }
+.pos-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #555; background: #111; }
+.pos-dot.yellow { background: #ffaa44; border-color: #ffbf00; }
+.pos-dot.red { background: #ff4444; border-color: #ffaa44; }
+.pos-dot.green { background: #4affab; border-color: #22ff88; }
+.aoe-line-container { position: relative; display: flex; gap: 4px; }
+.aoe-line { position: absolute; top: 5px; left: 2px; right: 2px; height: 2px; background: #ff4444; z-index: 1; }
+.aoe-dot { z-index: 2; position: relative; }
 
-.queue-item {
-    width: 45px; height: 45px; border: 1px solid #555;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: bold; color: #fff;
-    position: relative; transition: transform 0.2s, margin-top 0.2s;
-}
+.tt-divider { height: 1px; background: #444; margin: 8px 0; width: 100%; }
+.tt-type { color: #888; font-style: italic; font-size: 14px; margin-bottom: 5px; }
+.tt-desc { color: #ccc; font-size: 14px; font-style: italic; line-height: 1.3; }
+.tt-dmg { color: #fff; font-weight: bold; font-size: 16px; margin-bottom: 4px; }
 
-.queue-item.active { border: 2px solid #ffbf00; box-shadow: 0 0 10px #ffbf00; }
-.queue-item.player { background: #4a90e2; }
-.queue-item.enemy { background: #e24a4a; }
-.queue-item:hover { margin-top: 5px; transform: scale(1.1); border-color: #fff; }
+.tt-condition { background: rgba(255, 191, 0, 0.1); padding: 5px; border-left: 2px solid #ffbf00; margin-bottom: 5px; }
+.tt-combo { background: rgba(74, 255, 171, 0.1); padding: 5px; border-left: 2px solid #4affab; }
 
-.tt-stats-row {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr 1fr; /* [HP] [BATTLE] [STAMINA] */
-    align-items: center;
-    text-align: center;
-    margin: 10px 0;
-}
+.tt-move { color: #b19cd9 !important; font-weight: bold; } 
+.tt-buff { color: #4affab !important; font-weight: bold; }   
+.tt-debuff { color: #ff6666 !important; font-weight: bold; } 
 
-.queue-item.hover-highlight {
-    border-color: #fff !important;
-    transform: translateY(10px);
-    box-shadow: 0 0 15px rgba(255,255,255,0.5);
-}
+.unit-card-mini { min-width: 220px; font-family: 'Segoe UI', sans-serif; }
+.unit-card-mini h3 { font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+.unit-card-mini .tt-divider { height: 1px; background: linear-gradient(to right, transparent, #555, transparent); margin: 8px 0; }
 
-.tt-equip-grid {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr 1fr;
-    gap: 10px;
-    height: 100%;
-}
-
-.tt-equip-col {
-    padding: 5px;
-    border-right: 1px solid #333;
-    display: flex;
-    flex-direction: column;
-}
-
+.tt-stats-row { display: grid; grid-template-columns: 1fr 1.2fr 1fr; align-items: center; text-align: center; margin: 10px 0; }
+.tt-equip-grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; height: 100%; }
+.tt-equip-col { padding: 5px; border-right: 1px solid #333; display: flex; flex-direction: column; }
 .tt-equip-col:last-child { border-right: none; }
-
 .tt-equip-header { color: #ffbf00; font-size: 11px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 3px;}
 .tt-equip-name { color: #fff; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
 .tt-equip-stat { font-size: 11px; color: #888; margin-bottom: 2px; }
-
-.queue-item.active.hover-highlight {
-    border-color: #fff !important;
-    box-shadow: 0 0 20px #ffbf00, 0 0 10px #fff;
-    transform: scale(1.15) translateY(5px);
-}

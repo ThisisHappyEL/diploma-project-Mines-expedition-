@@ -26,7 +26,15 @@ export class Unit {
     }
 
     get combatStat() {
-        return (this.stats && this.stats.battle !== undefined) ? this.stats.battle : this.baseCombat;
+        return this.baseCombat;
+    }
+
+    get stats() {
+        return { 
+            battle: this.combatStat, 
+            atkArmor: 0, 
+            defArmor: 0 
+        };
     }
 
     getAvailableSkills() { return []; }
@@ -58,20 +66,52 @@ export class Unit {
         if (effectConfig.id === 'weakness' && this.hasEffect('daze')) {
             let combo = Math.min(count, this.getEffect('daze').count);
             this.modifyEffect('daze', -combo);
-            this.addEffect(EFFECTS.STUN, combo * 2); 
-            count -= combo; if (count <= 0) return;
+            this.addEffect(EFFECTS.STUN, combo);
+            count -= combo; 
+            if (count <= 0) return;
         }
         if (effectConfig.id === 'daze' && this.hasEffect('weakness')) {
-            let weak = this.getEffect('weakness');
+            let combo = Math.min(count, this.getEffect('weakness').count);
             this.modifyEffect('weakness', -combo);
-            this.addEffect(EFFECTS.STUN, combo * 2);
-            count -= combo; if (count <= 0) return;
+            this.addEffect(EFFECTS.STUN, combo);
+            count -= combo; 
+            if (count <= 0) return;
+        }
+
+        if (effectConfig.id === 'power' && this.hasEffect('speed')) {
+            let combo = Math.min(count, this.getEffect('speed').count);
+            this.modifyEffect('speed', -combo);
+            this.addEffect(EFFECTS.COURAGE, combo); 
+            count -= combo; 
+            if (count <= 0) return;
+        }
+        if (effectConfig.id === 'speed' && this.hasEffect('power')) {
+            let combo = Math.min(count, this.getEffect('power').count);
+            this.modifyEffect('power', -combo);
+            this.addEffect(EFFECTS.COURAGE, combo); 
+            count -= combo; 
+            if (count <= 0) return;
+        }
+
+        if (effectConfig.type === 'debuff' || effectConfig.id === 'dot') {
+            if (this.hasEffect('susceptibility') && effectConfig.id !== 'susceptibility') {
+                count += 1; 
+                if (effectConfig.id === 'dot') {
+                    if (!customParams.damagePerTurn) customParams.damagePerTurn = 2;
+                    customParams.damagePerTurn += 1; 
+                }
+                if (customParams.duration) customParams.duration += 1; 
+                else customParams.duration = (effectConfig.duration || 4) + 1; 
+                
+                this.modifyEffect('susceptibility', -1); 
+                window.spawnDamageText("ВОСПРИИМЧИВОСТЬ", this.x + 10, this.y - 60, "#b19cd9");
+            }
         }
         if (effectConfig.id === 'dot') {
             let ex = this.getEffect('dot');
             if (ex) {
-                ex.duration += 1;
-                ex.damagePerTurn = (ex.damagePerTurn || 2) + 1;
+                // Если ДОТ уже есть - продлеваем его и усиливаем урон
+                ex.duration = Math.max(ex.duration, customParams.duration);
                 if (customParams.damagePerTurn > ex.damagePerTurn) ex.damagePerTurn = customParams.damagePerTurn;
             } else {
                 this.activeEffects.push({ base: effectConfig, count: 1, duration: customParams.duration || 3, damagePerTurn: customParams.damagePerTurn || 2 });
@@ -81,25 +121,44 @@ export class Unit {
         let existing = this.getEffect(effectConfig.id);
         if (existing) {
             existing.count += count;
-            if (customParams.duration) existing.duration = customParams.duration;
+            if (customParams.duration) existing.duration = Math.max(existing.duration, customParams.duration);
         } else {
             this.activeEffects.push({ base: effectConfig, count: count, duration: customParams.duration || effectConfig.duration || 99 });
         }
     }
 
     tickEffectsByTrigger(triggerType) {
+        // ИСПРАВЛЕНИЕ: Эти жетоны тратятся ТОЛЬКО вручную при их фактическом срабатывании
+        const manualTokens = ['block', 'parry', 'dodge', 'aGapingWound', 'ammo'];
+
         for (let i = this.activeEffects.length - 1; i >= 0; i--) {
             let e = this.activeEffects[i];
-            if (e.base.tickOn === triggerType) e.count -= 1;
-            else if (triggerType === 'turnEnd' && e.duration !== undefined && e.base.id !== 'stun') e.duration -= 1;
-            if (e.count <= 0 || (e.duration !== undefined && e.duration <= 0)) this.activeEffects.splice(i, 1);
+            
+            if (e.base.tickOn === triggerType) {
+                // Если сработал авто-триггер hitReceived, но эффект из списка ручных — не трогаем его!
+                if (triggerType === 'hitReceived' && manualTokens.includes(e.base.id)) {
+                    // Пропускаем
+                } else {
+                    e.count -= 1;
+                }
+            } 
+            else if (triggerType === 'turnEnd' && e.duration !== undefined && e.base.id !== 'stun') {
+                e.duration -= 1;
+            }
+            
+            if (e.count <= 0 || (e.duration !== undefined && e.duration <= 0)) {
+                this.activeEffects.splice(i, 1);
+            }
         }
     }
 
     takeDamage(amt) {
         this.hp = Math.max(0, this.hp - amt);
         this.offsetX = this.side === 'player' ? -20 : 20;
-        if (this.hp <= 0) this.isDead = true;
+        if (this.hp <= 0) {
+            this.isDead = true;
+            this.effectHitboxes = []; // ИСПРАВЛЕНИЕ 3: Уничтожаем хитбоксы при смерти
+        }
     }
 
     update() {
@@ -112,44 +171,84 @@ export class Unit {
         this.queueYOffset *= 0.8; 
     }
 
-    draw(ctx, isActiveTurn, isPotentialTarget = false, isHovered = false) {
+    draw(ctx, isActiveTurn, isPotentialTarget = false, isHovered = false, predictedDamage = 0) {
         if (this.isDead) return;
         const drawX = this.x + this.offsetX;
         const nameOnly = this.name.split(' ')[0];
         this.effectHitboxes = []; 
 
-        if (isActiveTurn) {
+        // --- ЛОГИКА ПОДСВЕТКИ (Aura) ---
+        if (isActiveTurn || isPotentialTarget || isHovered) {
             ctx.save();
-            ctx.shadowBlur = isHovered ? 40 : 20; 
-            ctx.shadowColor = "#ffbf00";
-            ctx.strokeStyle = isHovered ? "#ffffff" : "#ffbf00"; 
-            ctx.lineWidth = isHovered ? 6 : 4;
+            let color = '#ffffff';
+            let blur = 15;
+            let width = 3;
+
+            if (isActiveTurn) {
+                // Если его ход
+                color = '#ffbf00'; 
+                blur = isHovered ? 40 : 25; 
+                width = isHovered ? 6 : 4;
+            } else if (isPotentialTarget) {
+                // Если он - цель навыка
+                if (isHovered) {
+                    // Яркая подсветка при наведении на цель
+                    color = this.side === 'player' ? '#00ccff' : '#ff0000';
+                    blur = 35; width = 5;
+                } else {
+                    // Тусклая подсветка просто доступных целей
+                    color = this.side === 'player' ? '#4aa3df' : '#ff4444';
+                    blur = 15; width = 2;
+                }
+            } else if (isHovered) {
+                // Обычный белый ховер (из очереди или мышкой)
+                color = '#ffffff'; blur = 20; width = 3;
+            }
+
+            ctx.shadowColor = color;
+            ctx.shadowBlur = blur;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
             ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
             ctx.restore();
         }
 
-        if ((isPotentialTarget || isHovered) && !isActiveTurn) {
-            ctx.save();
-            let color = isPotentialTarget ? (this.side === 'player' ? '#00ccff' : '#ff0000') : '#ffffff';
-            if (isHovered) color = '#ffffff'; 
-            ctx.shadowColor = color; ctx.shadowBlur = 25; ctx.strokeStyle = color; ctx.lineWidth = 4;
-            ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
-            ctx.restore();
-        }
-
+        // ... (рисуем тень и тело юнита) ...
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath(); ctx.ellipse(drawX + this.width/2, this.y + this.height, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = this.side === 'player' ? '#4a90e2' : '#e24a4a';
-        ctx.strokeStyle = isActiveTurn ? '#ffbf00' : '#fff'; ctx.lineWidth = 2;
+        ctx.strokeStyle = isActiveTurn ? '#ffbf00' : '#fff';
+        ctx.lineWidth = 2;
         ctx.fillRect(drawX, this.y, this.width, this.height);
         ctx.strokeRect(drawX, this.y, this.width, this.height);
 
+        // ХП полоска
         let hpPercent = this.maxHp > 0 ? (this.hp / this.maxHp) : 0;
-        ctx.fillStyle = '#333'; ctx.fillRect(drawX, this.y - 15, this.width, 6);
-        ctx.fillStyle = '#ff4444'; ctx.fillRect(drawX, this.y - 15, this.width * hpPercent, 6);
+        let hpY = this.y + this.height + 15; // Полоска теперь СНИЗУ под моделькой
+        
+        ctx.fillStyle = '#333'; 
+        ctx.fillRect(drawX, hpY, this.width, 6); // Фон полоски
+        
+        ctx.fillStyle = '#ff4444'; 
+        let currentHpWidth = this.width * hpPercent;
+        ctx.fillRect(drawX, hpY, currentHpWidth, 6);
+
+        if (predictedDamage > 0) {
+            let dmgPercent = Math.min(this.hp, predictedDamage) / this.maxHp;
+            let dmgWidth = this.width * dmgPercent;
+            
+            // Мигаем каждые 400мс
+            if (Math.floor(Date.now() / 400) % 2 === 0) {
+                ctx.fillStyle = 'rgba(255, 191, 0, 0.9)'; // Желто-золотой цвет отнятого куска
+                // Рисуем кусок с правого края текущего ХП
+                ctx.fillRect(drawX + currentHpWidth - dmgWidth, hpY, dmgWidth, 6); 
+            }
+        }
+
         ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial';
         ctx.fillText(nameOnly, drawX, this.y - 25);
 
+        // Эффекты (без цифр, как просил)
         if (this.activeEffects.length > 0) {
             let effectY = this.y - 45, effectX = drawX;
             this.activeEffects.forEach(e => {
@@ -162,13 +261,17 @@ export class Unit {
     }
 
     getTooltipHTML() {
-        return `<div class="unit-card-mini">
-                <h4 style="color: #ff4444; margin-bottom: 5px; text-transform:uppercase;">${this.name}</h4>
-                <div class="tt-divider"></div>
-                <div style="font-size:16px; color:#ffbf00;">⚔️ Бой: ${this.combatStat}</div>
-                <div style="font-size:16px; color:#ff6666; font-weight:bold;">❤️ HP: ${Math.floor(this.hp)}/${this.maxHp}</div>
-                <div class="tt-divider"></div>
-                <div style="font-size: 11px; color: #888;">Враждебная сущность недр.</div>
+        return `
+            <div class="unit-card-mini" style="position:relative; height:100%; display:flex; flex-direction:column; justify-content:center;">
+                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:36px; font-weight:900; color:rgba(255,191,0,0.05); white-space:nowrap; pointer-events:none; z-index:0; letter-spacing: 6px;">ПРОТИВНИК</div>
+                <div style="position:relative; z-index:1;">
+                    <h4 style="color: #ff4444; margin: 0 0 5px 0; text-transform:uppercase;">${this.name}</h4>
+                    <div class="tt-divider"></div>
+                    <div style="font-size:16px; color:#ffbf00;">⚔️ Бой: ${this.combatStat}</div>
+                    <div style="font-size:16px; color:#ff6666; font-weight:bold;">❤️ HP: ${Math.floor(this.hp)}/${this.maxHp}</div>
+                    <div class="tt-divider"></div>
+                    <div style="font-size: 11px; color: #888;">Враждебная сущность недр.</div>
+                </div>
             </div>`;
     }
 

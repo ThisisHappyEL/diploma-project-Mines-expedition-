@@ -93,7 +93,6 @@ export const AXE_SKILLS = {
         targetPos: [3, 4],
         isAoE: true,
         damageCoef: 0.5,
-        moveTarget: -1,
         description: "Наносит урон двум противникам позади и притягивает их",
     },
     ironSwan: {
@@ -112,18 +111,19 @@ export const AXE_SKILLS = {
         id: 'execution',
         name: "Казнь",
         fromLevel: 4,
-        uniqueCondition: 'target has status-token',
-        uniqueConditionReward: 'finally damage + damageCoef * 0.1 * status-token quantity',
+        uniqueCondition: 'На цели должен быть жетон эффекта',
+        uniqueConditionReward: 'Урон удара будет увеличен на 0,1 за каждый жетон эффекта жертвы',
         description: "Урон увеличивается за каждый негативный эффект на цели",
     },
     whirlwind: {
         id: 'whirlwind',
         name: "Вихрь",
-        hits: 4,
+        validPos: [1, 4],
+        targetSelf: true,
         fromLevel: 4,
         damageCoef: 0.8,
         comboOrMarkImproveable: true,
-        comboChanges: 'infinity cast while someone dies',
-        description: "Серия ударов с перемещением, наносящая урон и союзникам на пути",
+        comboChanges: 'Смерть любого юнита будет увеличивать количество смещений на 1',
+        description: "Серия ударов, количество которых равно количеству союзников",
     }
 };

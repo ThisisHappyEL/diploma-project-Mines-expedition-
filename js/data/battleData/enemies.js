@@ -1,7 +1,7 @@
 export const GLASS_FOREST_ENEMIES = {
     fritta: {
         name: "Фритта паучок",
-        hp: 15,
+        hp: 40,
         combat: 3,
         skills: [
             { 
