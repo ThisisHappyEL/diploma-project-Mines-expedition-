@@ -20,7 +20,7 @@ export class Adventurer extends Unit {
     }
 
     get combatStat() {
-        return this.stats.battle; // Теперь берет Бой с учетом одежды и черт
+        return this.stats.battle;
     }
 
     get stats() {

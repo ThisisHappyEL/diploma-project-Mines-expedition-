@@ -2,7 +2,6 @@ import { EFFECTS } from '../data/battleData/effects.js';
 
 export const SkillLogic = {
     
-    // ЭТАП 1: Модификаторы до удара (используется и в бою, и в прогнозе)
     applyPreStrikeModifiers(manager, attacker, primaryTarget, skill, effectiveBase, isPrediction = false) {
         
         if (skill.id === 'execution') {
@@ -23,9 +22,13 @@ export const SkillLogic = {
 
         if (skill.id === 'overhandThrow') {
             let distance = attacker.posIdx + primaryTarget.posIdx;
-            let bonus = (distance - 2) * 0.2; 
-            skill.damageCoef += bonus;
-            if (!isPrediction) manager.log(`[ДИСТАНЦИЯ] Бонус урона +${Math.round(bonus*100)}% за расстояние ${distance}`);
+            let isSynergy = attacker.hasEffect('combo') || primaryTarget.hasEffect('mark');
+            let step = isSynergy ? 0.2 : 0.15;
+            skill.damageCoef = 0.15 + (distance - 2) * step;
+            if (!isPrediction) {
+                let sText = isSynergy ? " <span style='color:#4affab;'>(Синергия!)</span>" : "";
+                manager.log(`[ДИСТАНЦИЯ] Шаг: ${Math.round(step*100)}%, Дист: ${distance}${sText}`);
+            }
         }
 
         if (skill.id === 'straightThrow') {
@@ -39,74 +42,150 @@ export const SkillLogic = {
 
         if (skill.id === 'vulnerableSpot') {
             if (!primaryTarget.hasEffect('mark') && !attacker.hasEffect('combo')) {
-                skill.damageCoef = 0.5; // Сильный штраф, если бьем без условия
+                skill.damageCoef = 0.5; 
                 skill.effect = null;
                 if (!isPrediction) manager.log(`[ПРОМАШКА] Удар без подготовки теряет свою силу!`);
             }
         }
 
-        // СИГНАЛЬНЫЙ БОЛТ (Арбалет) - Динамическая смена эффектов
         if (skill.id === 'flareBolt') {
             if (primaryTarget.side === attacker.side) {
-                // Если стреляем в союзника
-                skill.effect = 'taunt-1'; // Цели - провокация
-                // Остальным союзникам даем уклонение (реализуем в postStrike)
+                skill.effect = 'taunt-1'; 
             } else {
-                // Если стреляем во врага
-                skill.effect = 'vulnerable-1, mark-1';
+                let val = 1;
+                let isL = isPrediction ? false : manager.lastLucky;
+                let isC = isPrediction ? false : manager.lastCrit;
+                let isU = isPrediction ? false : manager.lastUnlucky;
+                if (isC) val = 3; else if (isL) val = 2; else if (isU) val = 0;
+                if (val > 0) skill.effect = `vulnerable-${val}, mark-${val}`;
+                else skill.effect = null;
             }
+        }
+
+        if (skill.id === 'prickAndShot') {
+            skill.effect = null;
+        }
+
+        if (skill.id === 'morePowder') {
+            let wLvl = attacker.equipment?.rightHand?.level || 1;
+            skill.effect = 'morePowder-1';
+            if (wLvl <= 2) skill.effect += ', stun-1';
+            else if (wLvl === 3) skill.effect += ', daze-1';
+        }
+
+        if (skill.id === 'reloadHelp') {
+            let wLvl = attacker.equipment?.rightHand?.level || 1;
+            
+            skill.effect = 'self ammo-2'; 
+            
+            if (wLvl <= 2) skill.effect += ', daze-1';
+            else if (wLvl === 3) skill.effect += ', self speed-1';
+            else if (wLvl >= 4) skill.effect += ', self speed-1, speed-1';
+
+            let allyPos = primaryTarget.posIdx;
+            let myPos = attacker.posIdx;
+            
+            if (allyPos < myPos - 1) {
+                let shift = (myPos - 1) - allyPos;
+                skill.moveTarget = shift; 
+            }
+        }
+
+        if (attacker.hasEffect('morePowder') && !skill.targetSelf && !skill.targetAlly && skill.damageCoef > 0) {
+            skill.effect = skill.effect ? skill.effect + ', stun-1' : 'stun-1';
+            if (!isPrediction) manager.log(`[БОЛЬШЕ ПОРОХА] Усиленный выстрел оглушает цель!`);
         }
     },
 
-    // ЭТАП 2: Эффекты после удара (Только в реальном бою)
-    applyPostStrikeModifiers(manager, attacker, primaryTarget, skill, effectiveBase) {
+    applyPostStrikeModifiers(manager, attacker, primaryTarget, skill, effectiveBase, isL = false, isU = false, isC = false) {
         
         if (skill.id === 'sweep') {
-            // Ищем живых врагов на 3 и 4 позициях
             let targetsToMove = manager.units.filter(u => u.side !== attacker.side && !u.isDead && (u.posIdx === 3 || u.posIdx === 4));
-            // Сдвигаем их всех разом (каждого на 1 клетку вперед)
             targetsToMove.forEach(t => manager.moveUnit(t, -1));
         }
         
         if (skill.id === 'invigoratingRicochet') {
-            // Ищет "зеркального" союзника
             let mirrorAlly = manager.units.find(u => u.side === attacker.side && !u.isDead && u.posIdx === primaryTarget.posIdx);
-            
             if (mirrorAlly) {
                 let allyDmg = Math.floor(effectiveBase * 0.3); 
                 mirrorAlly.takeDamage(allyDmg);
                 window.spawnDamageText(`-${allyDmg}`, mirrorAlly.x, mirrorAlly.y - 20, "#ffaa44");
-                
-                // Даем силу (теперь она не сгорит, т.к. удар уже прошел!)
-                mirrorAlly.addEffect(EFFECTS.POWER, 1);
-                manager.log(`[РИКОШЕТ] Камень отскакивает в ${mirrorAlly.name}, придавая Сил!`);
-
-                if (!skill.comboChanges && skill.comboOrMarkImproveable) {
-                    mirrorAlly.addEffect(EFFECTS.COURAGE, 1);
-                    manager.log(`[БЕЗУМНЫЙ РИКОШЕТ] Рикошет заряжает ${mirrorAlly.name} Куражом!`);
-                }
-            } else {
-                manager.log(`[РИКОШЕТ] Камень отскакивает в пустоту...`);
+                let val = 1; if (isC) val = 3; else if (isL) val = 2; else if (isU) val = 0;
+                if (val > 0) mirrorAlly.addEffect(EFFECTS.POWER, val);
+                manager.log(`[РИКОШЕТ] Камень отскакивает в ${mirrorAlly.name}!`);
+                if (!skill.comboChanges && skill.comboOrMarkImproveable && val > 0) mirrorAlly.addEffect(EFFECTS.COURAGE, 1);
             }
         }
 
         if (skill.id === 'duck') {
             let frontAllies = manager.units.filter(u => u.side === attacker.side && !u.isDead && (u.posIdx === 1 || u.posIdx === 2));
-            frontAllies.forEach(ally => {
-                ally.addEffect(EFFECTS.COMBO, 1);
-                window.spawnDamageText("КОМБО", ally.x, ally.y - 20, "#4affab");
-            });
-            manager.log(`[ПРИГНИСЬ] Союзники на передовой получают Комбо!`);
+            let val = 1; if (isC) val = 3; else if (isL) val = 2; else if (isU) val = 0;
+            if (val > 0) {
+                frontAllies.forEach(ally => {
+                    ally.addEffect(EFFECTS.COMBO, val);
+                    window.spawnDamageText(`КОМБО (${val})`, ally.x, ally.y - 20, "#4affab");
+                });
+            }
         }
 
-        // СИГНАЛЬНЫЙ БОЛТ (Арбалет) - Раздача уклонения союзникам
         if (skill.id === 'flareBolt' && primaryTarget.side === attacker.side) {
-            let otherAllies = manager.units.filter(u => u.side === attacker.side && !u.isDead && u !== primaryTarget);
-            otherAllies.forEach(ally => {
-                ally.addEffect(EFFECTS.DODGE, 1);
-                window.spawnDamageText("УКЛОНЕНИЕ", ally.x, ally.y - 20, "#fff");
+            let val = 1; if (isC) val = 3; else if (isL) val = 2; else if (isU) val = 0;
+            if (val > 0) {
+                primaryTarget.addEffect(EFFECTS.TAUNT, val);
+                window.spawnDamageText(`ПРОВОКАЦИЯ (${val})`, primaryTarget.x, primaryTarget.y - 20, "#4affab");
+                let otherAllies = manager.units.filter(u => u.side === attacker.side && !u.isDead && u !== primaryTarget);
+                otherAllies.forEach(ally => {
+                    ally.addEffect(EFFECTS.DODGE, val);
+                    window.spawnDamageText(`УКЛОНЕНИЕ (${val})`, ally.x, ally.y - 20, "#fff");
+                });
+                manager.log(`[СИГНАЛ] Погруженец ${primaryTarget.name} привлекает огонь на себя!`);
+            }
+        }
+
+        if (skill.id === 'brightFeathers') {
+            let enemies = manager.units.filter(u => u.side !== attacker.side && !u.isDead);
+            enemies.forEach(e => {
+                let hadEffect = false;
+                e.activeEffects = e.activeEffects.filter(eff => {
+                    let isDefense = ['taunt', 'protection', 'underProtection'].includes(eff.base.id);
+                    if (isDefense) hadEffect = true;
+                    return !isDefense;
+                });
+                if (hadEffect) window.spawnDamageText("СНЯТИЕ", e.x, e.y - 20, "#b19cd9");
             });
-            manager.log(`[СИГНАЛ] Сигнальный болт привлекает внимание к ${primaryTarget.name}!`);
+            manager.log(`[ЯРКОЕ ОПЕРЕНИЕ] Защитные построения врага рассеяны!`);
+        }
+
+        if (skill.id === 'prickAndShot') {
+            let frontEnemy = manager.units.find(u => u.side === primaryTarget.side && u.posIdx === 1 && !u.isDead);
+            if (frontEnemy && primaryTarget === frontEnemy) {
+                let val = 3; if (isC) val += 2; else if (isL) val += 1; else if (isU) val -= 1;
+                let dotDmg = 2; if (isC) dotDmg += 2; else if (isL) dotDmg += 1; else if (isU) dotDmg -= 1;
+                dotDmg = Math.max(1, dotDmg);
+                
+                if (val > 0) {
+                    frontEnemy.addEffect(EFFECTS.DOT, 1, { duration: val, damagePerTurn: dotDmg });
+                    window.spawnDamageText(`КРОВОТЕЧЕНИЕ`, frontEnemy.x, frontEnemy.y - 20, "#ff4444");
+                }
+            }
+
+            let aliveEnemies = manager.units.filter(u => u.side !== attacker.side && !u.isDead).sort((a, b) => b.posIdx - a.posIdx);
+            let backEnemy = aliveEnemies.length > 0 ? aliveEnemies[0] : null;
+            
+            if (backEnemy && (backEnemy !== frontEnemy || aliveEnemies.length === 1)) {
+                let backSkill = { name: "Выстрел", damageCoef: skill.damageCoef, effect: null };
+                manager.applyDamageLogic(attacker, backEnemy, backSkill, effectiveBase, 0, 1);
+            }
+        }
+
+        if (skill.id === 'rapidFire') {
+            attacker.modifyEffect('combo', -1);
+            attacker.addEffect(EFFECTS.RAPIDFIRE, 2); 
+            manager.log(`[СКОРОСТРЕЛЬНОСТЬ] ${attacker.name} занимает позицию для прикрытия!`);
+        }
+
+        if (attacker.hasEffect('morePowder') && !skill.targetSelf && !skill.targetAlly && skill.damageCoef > 0) {
+            attacker.modifyEffect('morePowder', -1);
         }
     },
 

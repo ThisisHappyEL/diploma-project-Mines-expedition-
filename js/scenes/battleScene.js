@@ -2,7 +2,7 @@ import { BattleManager } from '../managers/BattleManager.js';
 import { Adventurer } from '../entities/Adventurer.js';
 import { Unit } from '../entities/Unit.js';
 import { test_weapon } from '../data/battleData/weapon.js';
-import { GLASS_FOREST_ENEMIES } from '../data/battleData/enemies.js';
+import { GLASS_FOREST_ENEMIES, GLASS_FOREST_ENCOUNTERS } from '../data/battleData/enemies.js';
 import { GameState } from '../core/GameState.js';
 import { SceneManager } from '../core/SceneManager.js';
 import { BattleUIHelper } from '../managers/BattleUIHelper.js';
@@ -44,19 +44,56 @@ export const BattleScene = {
         document.getElementById('b-log-btn').onclick = () => document.getElementById('b-log-container').classList.toggle('hidden');
         this.gameUnits = []; this.damageTexts = []; this.hoveredObject = null; this.hoverQueueUnit = null;
 
+        this.bgImage = new Image();
+        this.bgLoaded = false;
+        let bgRand = Math.floor(Math.random() * 6);
+        this.bgImage.onload = () => { this.bgLoaded = true; };
+        this.bgImage.src = `assets/img/backgrounds/glassForest${bgRand}.png`;
+
         GameState.currentSquad.forEach((data, index) => {
             const hero = new Adventurer(data, index + 1);
             if (!hero.equipment.rightHand) hero.equip('rightHand', test_weapon.debugSword);
             this.gameUnits.push(hero);
         });
 
-        for (let i = 1; i <= 4; i++) {
+        const getSpriteUrl = (data) => {
+            if (data.spriteVariations) {
+                let r = Math.floor(Math.random() * data.spriteVariations);
+                let cleanUrl = data.spriteUrl.replace(/\.png$/i, ''); 
+                return `${cleanUrl}${r}.png`;
+            }
+            return data.spriteUrl; 
+        };
+
+        const encounter = GLASS_FOREST_ENCOUNTERS.demo_1;
+        
+        if (encounter.env) {
+            let envData = GLASS_FOREST_ENEMIES[encounter.env];
             this.gameUnits.push(new Unit({ 
-                name: `Фритта ${String.fromCharCode(64+i)}`, side: 'enemy', posIdx: i, 
-                hp: GLASS_FOREST_ENEMIES.fritta.hp, maxHp: GLASS_FOREST_ENEMIES.fritta.hp, 
-                combat: GLASS_FOREST_ENEMIES.fritta.combat, skills: GLASS_FOREST_ENEMIES.fritta.skills 
+                name: envData.name, side: 'enemy', posIdx: 0, 
+                hp: envData.hp, maxHp: envData.hp, 
+                combat: envData.combat, skills: envData.skills,
+                isEnvironment: true,
+                spriteUrl: getSpriteUrl(envData),
+                scale: envData.scale
             }));
         }
+
+        encounter.units.forEach((enemyId, index) => {
+            if (enemyId) {
+                let eData = GLASS_FOREST_ENEMIES[enemyId];
+                let pos = index + 1;
+                let letter = String.fromCharCode(65 + index); 
+                
+                this.gameUnits.push(new Unit({ 
+                    name: `${eData.name} ${letter}`, side: 'enemy', posIdx: pos, 
+                    hp: eData.hp, maxHp: eData.hp, 
+                    combat: eData.combat, skills: eData.skills,
+                    spriteUrl: getSpriteUrl(eData),
+                    scale: eData.scale
+                }));
+            }
+        });
 
         this.battleManager = new BattleManager(this.gameUnits, (a, s, m) => this.updateUI(a, s, m));
         this.battleManager.logPanel = document.getElementById('b-log-container');
@@ -85,14 +122,21 @@ export const BattleScene = {
         if (!skillsRow) return;
         skillsRow.innerHTML = '';
         
-        if (!activeUnit || activeUnit.side !== 'player' || manager.state === 'EXECUTING') return;
-
         const mBtn = document.getElementById('b-btn-move');
+        const rBtn = document.getElementById('b-btn-rest');
+
+        if (!activeUnit || activeUnit.side !== 'player' || manager.state === 'EXECUTING') {
+            mBtn.style.opacity = '0.3'; mBtn.onclick = null; mBtn.onmouseenter = null; mBtn.onmouseleave = null;
+            rBtn.style.opacity = '0.3'; rBtn.onclick = null; rBtn.onmouseenter = null; rBtn.onmouseleave = null;
+            return;
+        }
+
+        mBtn.style.opacity = '1';
         mBtn.onclick = () => manager.selectMoveAction();
         mBtn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { name: "Движение", description: "Смена позиции с соседним союзником.", isMove: true } };
         mBtn.onmouseleave = () => this.hoveredObject = null;
 
-        const rBtn = document.getElementById('b-btn-rest');
+        rBtn.style.opacity = '1';
         rBtn.onclick = () => manager.performRest();
         rBtn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { name: "Отдых", description: "Пропуск хода для восстановления сил.", isRest: true } };
         rBtn.onmouseleave = () => this.hoveredObject = null;
@@ -112,21 +156,23 @@ export const BattleScene = {
             if (skill.targetSelf) {
                 hasTarget = true; 
             } else if (skill.targetAny) {
-                hasTarget = true; // Можно кидать в кого угодно
+                hasTarget = true;
             } else {
                 const targetSide = skill.targetAlly ? activeUnit.side : (activeUnit.side === 'player' ? 'enemy' : 'player');
                 hasTarget = this.gameUnits.some(u => !u.isDead && u.side === targetSide && skill.targetPos?.includes(u.posIdx));
             }
 
-            let needsAmmo = ['aimedShot', 'duck', 'snapShot', 'broadheadBolt', 'heavyBolt', 'fireBolt', 'vulnerableSpot', 'flareBolt'].includes(skill.id);
+            let needsAmmo = ['aimedShot', 'duck', 'snapShot', 'broadheadBolt', 'heavyBolt', 'fireBolt', 'vulnerableSpot', 'flareBolt',
+                             'frontRearSights', 'buckshot', 'shotIntoAir', 'piercedArtery', 'piercingShot', 'stayAway'].includes(skill.id);
             let hasAmmo = activeUnit.hasEffect('ammo');
             
             let isVulnerableSpotValid = true;
-            if (skill.id === 'vulnerableSpot') {
-                isVulnerableSpotValid = activeUnit.hasEffect('combo') || this.gameUnits.some(u => u.side !== activeUnit.side && !u.isDead && u.hasEffect('mark'));
-            }
+            if (skill.id === 'vulnerableSpot') isVulnerableSpotValid = activeUnit.hasEffect('combo') || this.gameUnits.some(u => u.side !== activeUnit.side && !u.isDead && u.hasEffect('mark'));
 
-            if (!isPosValid || !hasTarget || (needsAmmo && !hasAmmo) || !isVulnerableSpotValid) {
+            let isRapidFireValid = true;
+            if (skill.id === 'rapidFire') isRapidFireValid = activeUnit.hasEffect('combo');
+
+            if (!isPosValid || !hasTarget || (needsAmmo && !hasAmmo) || !isVulnerableSpotValid || !isRapidFireValid) {
                 btn.disabled = true;
             }
 
@@ -149,6 +195,7 @@ export const BattleScene = {
 
     setupInput() {
         const canvas = SceneManager.canvas;
+        
         canvas.onmousemove = (e) => {
             const rect = canvas.getBoundingClientRect();
             this.mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -158,12 +205,50 @@ export const BattleScene = {
             if (this.hoverQueueUnit) { this.battleManager.handleCanvasClick(this.hoverQueueUnit); return; }
             this.gameUnits.forEach(u => { if (u.isClicked(this.mouseX, this.mouseY)) this.battleManager.handleCanvasClick(u); });
         };
+
+        this.keyDownHandler = (e) => {
+            if (e.key === ' ' || e.code === 'Space') e.preventDefault();
+
+            let active = this.battleManager ? this.battleManager.getActiveUnit() : null;
+            if (!active || active.side !== 'player' || this.battleManager.state === 'EXECUTING') return;
+
+            const mBtn = document.getElementById('b-btn-move');
+            const rBtn = document.getElementById('b-btn-rest');
+            const skillsRow = document.getElementById('b-skills-row');
+
+            if (e.key === 'Shift') {
+                if (mBtn && mBtn.style.opacity === '1') mBtn.click();
+            } 
+            else if (e.key === ' ' || e.code === 'Space') {
+                if (rBtn && rBtn.style.opacity === '1') rBtn.click();
+            } 
+            else if (['1','2','3','4','5','6','7','8','9','0'].includes(e.key)) {
+                let idx = e.key === '0' ? 9 : parseInt(e.key) - 1;
+                if (skillsRow && skillsRow.children.length > idx) {
+                    let btn = skillsRow.children[idx];
+                    if (!btn.disabled) btn.click();
+                }
+            }
+        };
+        window.addEventListener('keydown', this.keyDownHandler);
     },
 
     draw(ctx, canvas) {
-        ctx.fillStyle = "#0c0a08"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "rgba(255, 191, 0, 0.3)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(canvas.width/2, 200); ctx.lineTo(canvas.width/2, 800); ctx.stroke();
+        if (this.bgLoaded) {
+            ctx.drawImage(this.bgImage, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(12, 10, 8, 0.4)"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let floorGradient = ctx.createLinearGradient(0, 680, 0, canvas.height);
+            floorGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+            floorGradient.addColorStop(0.1, "rgba(10, 8, 6, 0.7)");
+            floorGradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
+            
+            ctx.fillStyle = floorGradient;
+            ctx.fillRect(0, 680, canvas.width, canvas.height - 680);
+        } else {
+            ctx.fillStyle = "#0c0a08"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         let hFieldU = null;
         this.gameUnits.forEach(u => { if (u.isClicked(this.mouseX, this.mouseY)) hFieldU = u; });
@@ -177,7 +262,6 @@ export const BattleScene = {
 
         let active = this.battleManager ? this.battleManager.getActiveUnit() : null;
 
-        // ПРЕДВАРИТЕЛЬНЫЙ ПРОСЧЕТ ПРОГНОЗА И АОЕ (ДО отрисовки юнитов)
         let predictionHTML = null;
         let globalExpectedDmg = 0;
         let isHoveringAoE = false;
@@ -186,6 +270,12 @@ export const BattleScene = {
         if (active && this.battleManager.state === 'SELECT_TARGET' && this.battleManager.selectedSkill && target && !target.isDead) {
             let s = this.battleManager.selectedSkill;
             let isP = false;
+
+            if (s.id === 'buckshot' && target) {
+                        if (target.posIdx === 1) s.targetPos = [1, 2];
+                        else if (target.posIdx === 3) s.targetPos = [2, 3];
+                        else s.targetPos = [1, 2];
+                    }
             
             if (s.targetSelf) { if (target === active) isP = true; }
             else if (s.targetAny) { if (s.targetPos?.includes(target.posIdx)) isP = true; }
@@ -198,31 +288,38 @@ export const BattleScene = {
 
                 let top3 = pred.list.slice(0, 3);
                 let listHTML = top3.map(p => {
-                            let effsStr = pred.simSkill.effect || '';
-                            if (pred.simSkill.id === 'flareBolt') effsStr = (unit.side === active.side) ? 'ally taunt-1' : 'vulnerable-1, mark-1'; 
-                            if (pred.simSkill.id === 'duck') effsStr = ''; 
-                            if (pred.simSkill.id === 'invigoratingRicochet') effsStr = 'weakness-1'; 
+                    let effsStr = pred.simSkill.effect || '';
+                    
+                    if (pred.simSkill.id === 'flareBolt') {
+                        effsStr = (target.side === active.side) ? 'taunt-1' : 'vulnerable-1, mark-1';
+                    }
+                    if (pred.simSkill.id === 'duck') effsStr = ''; 
+                    if (pred.simSkill.id === 'invigoratingRicochet') effsStr = 'weakness-1'; 
 
-                            let isTargetSusceptible = target.hasEffect('susceptibility');
+                    let translated = [];
+                    if (effsStr && p.type !== "ПРОМАХ") {
+                        let cleanEffs = effsStr.split(',')
+                            .filter(eff => !eff.trim().toLowerCase().startsWith('self ') && !eff.trim().toLowerCase().startsWith('ally '))
+                            .join(',');
+                        
+                        translated = BattleUIHelper.translateEffect(cleanEffs, p.isL, p.isU, p.isC, target.hasEffect('susceptibility'));
+                    }
 
-                            let translated = [];
-                            if (effsStr && p.type !== "ПРОМАХ") {
-                                let filteredEffects = effsStr.split(',')
-                                    .filter(eff => !eff.trim().toLowerCase().startsWith('self ') && !eff.trim().toLowerCase().startsWith('ally '))
-                                    .join(',');
-                                translated = BattleUIHelper.translateEffect(filteredEffects, p.isL, p.isU, p.isC, isTargetSusceptible);
-                            }
+                    if (pred.simSkill.moveTarget && target !== active && p.type !== "ПРОМАХ") {
+                        let dir = pred.simSkill.moveTarget > 0 ? 'Назад' : 'Вперед';
+                        translated.push(`<span class="tt-move">${dir} ${Math.abs(pred.simSkill.moveTarget)}</span>`);
+                    }
+                    if (pred.simSkill.moveSelf && target === active && p.type !== "ПРОМАХ") {
+                        let dir = pred.simSkill.moveSelf > 0 ? 'Назад' : 'Вперед';
+                        translated.push(`<span class="tt-move">${dir} ${Math.abs(pred.simSkill.moveSelf)}</span>`);
+                    }
 
-                            if (pred.simSkill.moveTarget && target !== active && p.type !== "ПРОМАХ") {
-                                let dir = pred.simSkill.moveTarget > 0 ? 'Назад' : 'Вперед';
-                                translated.push(`<span class="tt-move">${dir} ${Math.abs(pred.simSkill.moveTarget)}</span>`);
-                            }
-
-                            let effsHTML = translated.length > 0 ? translated.join(', ') : '<span style="color:#666">Нет эффектов</span>';
-                            let hitsStr = p.hits > 1 ? `<span style="font-size:10px; color:#888; margin-left:4px;">(${p.hits}x${p.singleDmg})</span>` : '';
+                    let effsHTML = translated.length > 0 ? translated.join(', ') : '<span style="color:#666">Нет эффектов</span>';
+                    let hitsStr = p.hits > 1 ? `<span style="font-size:10px; color:#888; margin-left:4px;">(${p.hits}x${p.singleDmg})</span>` : '';
 
                     return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:12px; background: rgba(255,255,255,0.08); padding: 5px 8px; border-radius: 4px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);">
+                    <div style="margin-bottom:4px; background: rgba(255,255,255,0.08); padding: 5px 8px; border-radius: 4px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
                             <span style="color:${p.color}; min-width: 85px; font-weight:bold;">${p.type} <span style="font-size:10px; color:#aaa">(${p.prob}%)</span></span>
                             <span style="flex:1; color:#ccc; font-size:11px; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align:center;">${effsHTML}</span>
                             <span style="text-align:right; min-width: 80px;">
@@ -230,7 +327,8 @@ export const BattleScene = {
                                 <span style="color:#ff4444; font-weight:bold; font-size: 13px;">-${p.totalDmg} HP</span>
                                 ${hitsStr}
                             </span>
-                        </div>`;
+                        </div>
+                    </div>`;
                 }).join('');
 
                 predictionHTML = `
@@ -247,7 +345,6 @@ export const BattleScene = {
             }
         }
 
-        // Отрисовка красной линии АоЕ
         if (isHoveringAoE && active && this.battleManager.selectedSkill?.isAoE) {
             let s = this.battleManager.selectedSkill;
             let aoeTargets = this.gameUnits.filter(u => u.side === hoveredAoESide && !u.isDead && s.targetPos.includes(u.posIdx));
@@ -269,11 +366,22 @@ export const BattleScene = {
         const leftBox = document.getElementById('b-info-left');
         const rightBox = document.getElementById('b-info-right');
 
+        let unitsToDraw = [...this.gameUnits].sort((a, b) => {
+            if (a.isEnvironment && !b.isEnvironment) return -1;
+            if (!a.isEnvironment && b.isEnvironment) return 1;
+            return b.posIdx - a.posIdx; // По убыванию позиции (4 -> 3 -> 2 -> 1)
+        });
+
         if (this.battleManager) {
-            this.gameUnits.forEach(unit => {
+            let unitsToDraw = [...this.gameUnits].sort((a, b) => {
+                if (a.isEnvironment && !b.isEnvironment) return -1;
+                if (!a.isEnvironment && b.isEnvironment) return 1;
+                return b.posIdx - a.posIdx; 
+            });
+
+            unitsToDraw.forEach(unit => {
                 unit.update();
-                let isP = false;
-                let dmgToDraw = 0;
+                let isP = false; 
 
                 if (active && this.battleManager.state === 'SELECT_TARGET' && this.battleManager.selectedSkill) {
                     let s = this.battleManager.selectedSkill;
@@ -281,23 +389,29 @@ export const BattleScene = {
                     else if (s.targetAny) { if (s.targetPos?.includes(unit.posIdx)) isP = true; }
                     else if (s.targetAlly) { if (unit.side === active.side && s.targetPos?.includes(unit.posIdx)) isP = true; }
                     else { if (unit.side !== active.side && s.targetPos?.includes(unit.posIdx)) isP = true; }
-
-                    if (predictionHTML) {
-                        if (s.isAoE && isHoveringAoE) {
-                            if (unit.side === hoveredAoESide && s.targetPos?.includes(unit.posIdx)) dmgToDraw = globalExpectedDmg;
-                        } else if (!s.isAoE && unit === target) {
-                            dmgToDraw = globalExpectedDmg;
-                        }
-                    }
                 } else if (active && this.battleManager.state === 'SELECT_MOVE') {
                     if (unit.side === active.side && unit !== active && Math.abs(unit.posIdx - active.posIdx) === 1) isP = true;
                 }
 
-                // ИСПРАВЛЕНИЕ: Если АоЕ, подсвечиваем КРАСНОЙ РАМКОЙ всех юнитов в АоЕ
                 let isActuallyHovered = (unit === target);
                 if (isHoveringAoE && isP && unit.side === hoveredAoESide) isActuallyHovered = true;
 
-                unit.draw(ctx, active === unit, isP, isActuallyHovered, dmgToDraw);
+                unit.drawBody(ctx, active === unit, isP, isActuallyHovered);
+                
+                unit._tempExpectedDmg = 0;
+                if (predictionHTML && active && this.battleManager.selectedSkill) {
+                    if (this.battleManager.selectedSkill.isAoE && isHoveringAoE) {
+                        if (unit.side === hoveredAoESide && this.battleManager.selectedSkill.targetPos?.includes(unit.posIdx)) {
+                            unit._tempExpectedDmg = globalExpectedDmg;
+                        }
+                    } else if (unit === target && !this.battleManager.selectedSkill.isAoE) {
+                        unit._tempExpectedDmg = globalExpectedDmg;
+                    }
+                }
+            });
+
+            unitsToDraw.forEach(unit => {
+                unit.drawUI(ctx, unit._tempExpectedDmg || 0);
             });
         }
 
@@ -383,6 +497,9 @@ export const BattleScene = {
         document.getElementById('ui-battle').classList.add('hidden');
         SceneManager.canvas.onmousedown = null;
         SceneManager.canvas.onmousemove = null;
+        if (this.keyDownHandler) {
+            window.removeEventListener('keydown', this.keyDownHandler);
+        }
     }
 };
 

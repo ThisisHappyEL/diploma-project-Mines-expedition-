@@ -13,7 +13,8 @@ export class Unit {
         this.baseCombat = Number(config.combat) || 10; 
 
         this.x = this.side === 'player' ? -100 : 1100; 
-        this.y = 600;
+        this.y = 700;
+        this.scale = config.scale || 1.0;
         this.width = 80;
         this.height = 120;
         this.targetX = 0; 
@@ -23,6 +24,18 @@ export class Unit {
         this.activeEffects = []; 
         this.effectHitboxes = [];
         this.queueYOffset = 0; 
+        this.isEnvironment = config.isEnvironment || false;
+        this.sprite = null;
+        this.spriteLoaded = false
+        if (config.spriteUrl) {
+            this.sprite = new Image();
+            this.sprite.onload = () => {
+                this.spriteLoaded = true;
+                this.width = this.sprite.width * this.scale;
+                this.height = this.sprite.height * this.scale;
+            };
+            this.sprite.src = config.spriteUrl; 
+        }
     }
 
     get combatStat() {
@@ -110,7 +123,6 @@ export class Unit {
         if (effectConfig.id === 'dot') {
             let ex = this.getEffect('dot');
             if (ex) {
-                // Если ДОТ уже есть - продлеваем его и усиливаем урон
                 ex.duration = Math.max(ex.duration, customParams.duration);
                 if (customParams.damagePerTurn > ex.damagePerTurn) ex.damagePerTurn = customParams.damagePerTurn;
             } else {
@@ -128,16 +140,14 @@ export class Unit {
     }
 
     tickEffectsByTrigger(triggerType) {
-        // ИСПРАВЛЕНИЕ: Эти жетоны тратятся ТОЛЬКО вручную при их фактическом срабатывании
-        const manualTokens = ['block', 'parry', 'dodge', 'aGapingWound', 'ammo'];
+        const manualTokens = ['block', 'parry', 'dodge', 'aGapingWound', 'ammo', 'noOneStepFurther', 'morePowder'];
 
         for (let i = this.activeEffects.length - 1; i >= 0; i--) {
             let e = this.activeEffects[i];
             
             if (e.base.tickOn === triggerType) {
-                // Если сработал авто-триггер hitReceived, но эффект из списка ручных — не трогаем его!
                 if (triggerType === 'hitReceived' && manualTokens.includes(e.base.id)) {
-                    // Пропускаем
+                } else if (manualTokens.includes(e.base.id)) {
                 } else {
                     e.count -= 1;
                 }
@@ -157,104 +167,129 @@ export class Unit {
         this.offsetX = this.side === 'player' ? -20 : 20;
         if (this.hp <= 0) {
             this.isDead = true;
-            this.effectHitboxes = []; // ИСПРАВЛЕНИЕ 3: Уничтожаем хитбоксы при смерти
+            this.effectHitboxes = [];
         }
     }
 
     update() {
         if (this.isDead) return;
-        const baseX = 960, gap = 60, spacing = 130;
-        if (this.side === 'player') this.targetX = baseX - gap - this.width - ((this.posIdx - 1) * spacing);
-        else this.targetX = baseX + gap + ((this.posIdx - 1) * spacing);
+        const baseX = 960, gap = 220, spacing = 160; 
+        const slotWidth = 80; 
+
+        let slotCenterX = baseX;
+        if (this.isEnvironment) {
+            slotCenterX = baseX;
+        } else if (this.side === 'player') {
+            slotCenterX = baseX - gap - ((this.posIdx - 1) * spacing);
+        } else {
+            slotCenterX = baseX + gap + ((this.posIdx - 1) * spacing);
+        }
+
+        this.targetX = slotCenterX - (this.width / 2);
+        
         this.x += (this.targetX - this.x) * 0.1;
         this.offsetX *= 0.8;
         this.queueYOffset *= 0.8; 
     }
 
-    draw(ctx, isActiveTurn, isPotentialTarget = false, isHovered = false, predictedDamage = 0) {
+    drawBody(ctx, isActiveTurn, isPotentialTarget = false, isHovered = false) {
         if (this.isDead) return;
         const drawX = this.x + this.offsetX;
-        const nameOnly = this.name.split(' ')[0];
+        let centerX = drawX + this.width / 2; 
+        const drawY = this.y - this.height;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(centerX, this.y, this.width * 0.35, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+        ctx.save(); 
+        if (isActiveTurn || isPotentialTarget || isHovered) {
+            let color = '#ffffff'; 
+            let blur = 0;
+
+            if (isActiveTurn) { 
+                color = '#ffbf00'; 
+                blur = 20; 
+            }
+            
+            if (isPotentialTarget) {
+                color = this.side === 'player' ? '#4affab' : '#ff4444';
+                blur = 15;
+            }
+
+            if (isHovered) {
+                if (isPotentialTarget) {
+                    color = this.side === 'player' ? '#00ffaa' : '#ff0000';
+                    blur = 35;
+                } 
+                else if (isActiveTurn) {
+                    color = '#ffdf00'; 
+                    blur = 30;
+                }
+                else {
+                    color = '#ffffff';
+                    blur = 25;
+                }
+            }
+
+            ctx.shadowColor = color; 
+            ctx.shadowBlur = blur;
+            
+            if (this.spriteLoaded) {
+                ctx.drawImage(this.sprite, drawX, drawY, this.width, this.height);
+                ctx.drawImage(this.sprite, drawX, drawY, this.width, this.height);
+                ctx.drawImage(this.sprite, drawX, drawY, this.width, this.height);
+            }
+        }
+
+        if (this.spriteLoaded) {
+            ctx.drawImage(this.sprite, drawX, drawY, this.width, this.height);
+        } else {
+            ctx.fillStyle = this.isEnvironment ? '#88ccff' : (this.side === 'player' ? '#4a90e2' : '#e24a4a');
+            ctx.fillRect(drawX, drawY, this.width, this.height);
+            if (isActiveTurn || isPotentialTarget || isHovered) {
+                ctx.strokeStyle = ctx.shadowColor; ctx.lineWidth = 2; ctx.strokeRect(drawX, drawY, this.width, this.height);
+            }
+        }
+        ctx.restore(); 
+    }
+
+    drawUI(ctx, predictedDamage = 0) {
+        if (this.isDead) return;
+        const drawX = this.x + this.offsetX;
+        let centerX = drawX + this.width / 2;
+        const drawY = this.y - this.height;
         this.effectHitboxes = []; 
 
-        // --- ЛОГИКА ПОДСВЕТКИ (Aura) ---
-        if (isActiveTurn || isPotentialTarget || isHovered) {
-            ctx.save();
-            let color = '#ffffff';
-            let blur = 15;
-            let width = 3;
-
-            if (isActiveTurn) {
-                // Если его ход
-                color = '#ffbf00'; 
-                blur = isHovered ? 40 : 25; 
-                width = isHovered ? 6 : 4;
-            } else if (isPotentialTarget) {
-                // Если он - цель навыка
-                if (isHovered) {
-                    // Яркая подсветка при наведении на цель
-                    color = this.side === 'player' ? '#00ccff' : '#ff0000';
-                    blur = 35; width = 5;
-                } else {
-                    // Тусклая подсветка просто доступных целей
-                    color = this.side === 'player' ? '#4aa3df' : '#ff4444';
-                    blur = 15; width = 2;
-                }
-            } else if (isHovered) {
-                // Обычный белый ховер (из очереди или мышкой)
-                color = '#ffffff'; blur = 20; width = 3;
-            }
-
-            ctx.shadowColor = color;
-            ctx.shadowBlur = blur;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = width;
-            ctx.strokeRect(drawX - 5, this.y - 5, this.width + 10, this.height + 10);
-            ctx.restore();
-        }
-
-        // ... (рисуем тень и тело юнита) ...
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.beginPath(); ctx.ellipse(drawX + this.width/2, this.y + this.height, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = this.side === 'player' ? '#4a90e2' : '#e24a4a';
-        ctx.strokeStyle = isActiveTurn ? '#ffbf00' : '#fff';
-        ctx.lineWidth = 2;
-        ctx.fillRect(drawX, this.y, this.width, this.height);
-        ctx.strokeRect(drawX, this.y, this.width, this.height);
-
-        // ХП полоска
-        let hpPercent = this.maxHp > 0 ? (this.hp / this.maxHp) : 0;
-        let hpY = this.y + this.height + 15; // Полоска теперь СНИЗУ под моделькой
-        
-        ctx.fillStyle = '#333'; 
-        ctx.fillRect(drawX, hpY, this.width, 6); // Фон полоски
-        
-        ctx.fillStyle = '#ff4444'; 
-        let currentHpWidth = this.width * hpPercent;
-        ctx.fillRect(drawX, hpY, currentHpWidth, 6);
-
-        if (predictedDamage > 0) {
-            let dmgPercent = Math.min(this.hp, predictedDamage) / this.maxHp;
-            let dmgWidth = this.width * dmgPercent;
+        if (!this.isEnvironment) {
+            let hpPercent = this.maxHp > 0 ? (this.hp / this.maxHp) : 0;
+            let hpY = this.y + 15; 
+            let barW = 70; 
+            let barX = centerX - (barW / 2); 
             
-            // Мигаем каждые 400мс
-            if (Math.floor(Date.now() / 400) % 2 === 0) {
-                ctx.fillStyle = 'rgba(255, 191, 0, 0.9)'; // Желто-золотой цвет отнятого куска
-                // Рисуем кусок с правого края текущего ХП
-                ctx.fillRect(drawX + currentHpWidth - dmgWidth, hpY, dmgWidth, 6); 
+            ctx.fillStyle = '#333'; ctx.fillRect(barX, hpY, barW, 6); 
+            ctx.fillStyle = '#ff4444'; 
+            let currentHpWidth = barW * hpPercent;
+            ctx.fillRect(barX, hpY, currentHpWidth, 6);
+
+            if (predictedDamage > 0) {
+                let dmgPercent = Math.min(this.hp, predictedDamage) / this.maxHp;
+                let dmgWidth = barW * dmgPercent;
+                if (Math.floor(Date.now() / 400) % 2 === 0) {
+                    ctx.fillStyle = 'rgba(255, 191, 0, 0.9)'; 
+                    ctx.fillRect(barX + currentHpWidth - dmgWidth, hpY, dmgWidth, 6); 
+                }
             }
         }
 
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial';
-        ctx.fillText(nameOnly, drawX, this.y - 25);
-
-        // Эффекты (без цифр, как просил)
         if (this.activeEffects.length > 0) {
-            let effectY = this.y - 45, effectX = drawX;
+            let totalEffWidth = this.activeEffects.length * 28;
+            let effectX = centerX - (totalEffWidth / 2) + 14; 
+            let effectY = drawY - 15; 
+            
             this.activeEffects.forEach(e => {
                 ctx.fillStyle = '#fff'; ctx.font = '20px Arial';
-                ctx.fillText(e.base.icon, effectX, effectY);
-                this.effectHitboxes.push({ x: effectX, y: effectY - 20, width: 25, height: 25, data: e });
+                ctx.fillText(e.base.icon, effectX - 10, effectY); 
+                this.effectHitboxes.push({ x: effectX - 10, y: effectY - 20, width: 25, height: 25, data: e });
                 effectX += 28;
             });
         }
@@ -277,6 +312,17 @@ export class Unit {
 
     isClicked(mx, my) {
         if (this.isDead) return false;
-        return mx >= (this.x - 10) && mx <= (this.x + this.width + 10) && my >= (this.y - 10) && my <= (this.y + this.height + 10);
+        let drawX = this.x + this.offsetX;
+        let centerX = drawX + this.width / 2;
+        
+        let hitboxWidth = 100;
+        let hitboxHeight = 160;
+        
+        let left = centerX - (hitboxWidth / 2);
+        let right = centerX + (hitboxWidth / 2);
+        let top = this.y - hitboxHeight;
+        let bottom = this.y + 25;
+
+        return mx >= left && mx <= right && my >= top && my <= bottom;
     }
 }

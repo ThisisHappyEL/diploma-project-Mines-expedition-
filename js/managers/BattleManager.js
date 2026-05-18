@@ -24,10 +24,11 @@ export class BattleManager {
     startBattle() { 
         this.log("БОЙ НАЧИНАЕТСЯ!"); 
         
-        // ВЫДАЧА НАЧАЛЬНОГО БОЕЗАПАСА
         this.units.forEach(u => {
-            if (u.side === 'player' && u.equipment?.rightHand?.skills?.some(s => ['aimedShot', 'duck', 'snapShot', 'broadheadBolt', 'heavyBolt', 'fireBolt', 'vulnerableSpot', 'flareBolt'].includes(s.id))) {
-                // Симулируем "бросок" против самого сильного врага (как при перезарядке)
+            let needsInitialAmmo = ['aimedShot', 'duck', 'snapShot', 'broadheadBolt', 'heavyBolt', 'fireBolt', 'vulnerableSpot', 'flareBolt',
+                                    'frontRearSights', 'buckshot', 'shotIntoAir', 'piercedArtery', 'piercingShot', 'stayAway'];
+                                    
+            if (u.side === 'player' && u.equipment?.rightHand?.skills?.some(s => needsInitialAmmo.includes(s.id))) {
                 let enemies = this.units.filter(e => e.side !== u.side);
                 let dStatFinal = 0;
                 if (enemies.length > 0) {
@@ -36,7 +37,7 @@ export class BattleManager {
                 }
                 
                 let aStatFinal = Number(u.combatStat) + (u.stats?.atkArmor || 0);
-                let diff = (aStatFinal + 3) - (dStatFinal + 3); // Средний бросок 3 на 3
+                let diff = (aStatFinal + 3) - (dStatFinal + 3); 
                 
                 let ammoCount = 1;
                 if (diff >= 5) ammoCount = 2;
@@ -69,7 +70,6 @@ export class BattleManager {
     sortQueue(initList = null) {
         if (!initList) initList = this.turnQueue.map(u => ({ unit: u, score: this.baseInitiativeMap.get(u) || 10 }));
         initList.forEach(item => {
-            // ИСПРАВЛЕНИЕ: Гарантированный первый/последний ход
             if (item.unit.hasEffect('speed')) item.score += 1000;
             if (item.unit.hasEffect('daze')) item.score -= 1000;
         });
@@ -89,6 +89,12 @@ export class BattleManager {
         if (!active) { this.generateTurnQueue(); active = this.getActiveUnit(); if (!active) return; }
         if (active.isDead) { this.nextTurn(); return; }
         this.state = 'EXECUTING';
+
+        if (active.hasEffect('rapidFire')) {
+            this.log(`<span style="color:#ffbf00">${active.name.toUpperCase()} обеспечивает прикрытие (пропуск хода).</span>`);
+            setTimeout(() => { this.nextTurn(); }, 1000); 
+            return;
+        }
 
         if (active.hasEffect('stun')) {
             this.log(`<span style="color:#ffbf00">${active.name.toUpperCase()} ПРОПУСКАЕТ ХОД.</span>`);
@@ -110,7 +116,6 @@ export class BattleManager {
                 
                 this.applyDamageLogic(active, panicTarget, panicSkill, effectiveBase, 0, 1);
                 
-                // ИСПРАВЛЕНИЕ: Если мы убили героя, сразу схлопываем строй!
                 if (panicTarget.isDead) this.autoShiftUnits();
             }
             
@@ -140,7 +145,6 @@ export class BattleManager {
         if (this.selectedSkill?.id === skill.id && this.state === 'SELECT_TARGET') return;
         this.selectedSkill = skill;
         
-        // ИСПРАВЛЕНИЕ: Больше нет авто-каста на себя. Игрок всегда должен кликнуть!
         this.state = 'SELECT_TARGET';
         this.uiCallback(active, active.getAvailableSkills(), this);
     }
@@ -158,20 +162,17 @@ export class BattleManager {
         if (this.state === 'SELECT_TARGET' && this.selectedSkill) {
             let skill = this.selectedSkill;
 
-            // ИСПРАВЛЕНИЕ: Логика выбора цели
-            if (skill.targetSelf && targetUnit !== active) return; // Если скилл на себя - клик только по себе
+            if (skill.targetSelf && targetUnit !== active) return;
 
             if (!skill.targetSelf) {
                 if (skill.targetAny) {
-                    // Разрешаем кликать по кому угодно
                 } else if (skill.targetAlly && targetUnit.side !== active.side) {
-                    return; // Только по своим
+                    return;
                 } else if (!skill.targetAlly && !skill.targetAny && targetUnit.side === active.side) {
-                    return; // Только по врагам
+                    return;
                 }
             }
 
-            // Проверка позиции цели (если это не каст на себя)
             if (!skill.targetSelf && skill.targetPos && !skill.targetPos.includes(targetUnit.posIdx)) return;
 
             this.executeSkill(active, targetUnit);
@@ -192,7 +193,8 @@ export class BattleManager {
         let effectiveBase = weaponBase;
         if (attacker.equipment && attacker.equipment.leftHand === null) effectiveBase = Math.round(weaponBase * 1.3);
 
-        // Применяем комбо-метку
+        SkillLogic.applyPreStrikeModifiers(this, attacker, primaryTarget, skill, effectiveBase);
+
         if ((primaryTarget.hasEffect('mark') || attacker.hasEffect('combo')) && skill.comboOrMarkImproveable && skill.comboChanges) {
             Object.assign(skill, skill.comboChanges);
             if (primaryTarget.hasEffect('mark')) primaryTarget.modifyEffect('mark', -1); 
@@ -206,7 +208,6 @@ export class BattleManager {
             this.log(`[-1 Болт]`);
         }
 
-        // ВЫСТРЕЛ НАВСКИДКУ (Рандомная цель)
         if (skill.randomTarget) {
             let possibleTargets = this.units.filter(u => u.side !== attacker.side && !u.isDead && skill.targetPos.includes(u.posIdx));
             if (possibleTargets.length > 0) {
@@ -215,16 +216,19 @@ export class BattleManager {
             }
         }
 
-        // 1. ПРИМЕНЯЕМ ВСЕ КАСТОМНЫЕ МОДИФИКАТОРЫ (вынесено в отдельный файл)
-        SkillLogic.applyPreStrikeModifiers(this, attacker, primaryTarget, skill, effectiveBase);
-
         attacker.offsetX = attacker.side === 'player' ? 30 : -30; 
 
-        // 2. ПРОВЕРЯЕМ, ЕСТЬ ЛИ КАСТОМНЫЙ ЦИКЛ УДАРОВ (Вихрь и т.д.)
         const isCustomHandled = SkillLogic.executeCustomSkillFlow(this, attacker, primaryTarget, skill, effectiveBase);
-        if (isCustomHandled) return; // Если скилл сам все отыграл (через setTimeout), прерываем стандартный поток
+        if (isCustomHandled) {
+            let buffText = "ДЕЙСТВИЕ"; let buffColor = "#ffffff";
+            if (this.lastCrit) { buffText = "КРИТ. ЭФФЕКТ"; buffColor = "#ff00ff"; }
+            else if (this.lastLucky) { buffText = "УДАЧНЫЙ ЭФФЕКТ"; buffColor = "#4affab"; }
+            else if (this.lastUnlucky) { buffText = "НЕУДАЧНЫЙ ЭФФЕКТ"; buffColor = "#ffaa44"; }
+            
+            window.spawnDamageText(buffText, attacker.x, attacker.y - 40, buffColor);
+            return; 
+        }
 
-        // 3. СТАНДАРТНАЯ ЛОГИКА УДАРОВ
         let targets = skill.targetSelf ? [attacker] : (skill.isAoE ? this.units.filter(u => u.side !== attacker.side && !u.isDead && skill.targetPos.includes(u.posIdx)) : [primaryTarget]);
         let hitsCount = (skill.damageCoef === 0) ? 1 : (skill.hits || 1);
 
@@ -279,11 +283,7 @@ export class BattleManager {
         
         let aStatFinal = aStatBase + aStatMod;
         let dStatFinal = dStatBase + dStatMod;
-        
-        let aArmorBonus = attacker.stats?.atkArmor || 0;
-        let dArmorBonus = isFriendlyCast ? 0 : (target.stats?.defArmor || 0);
-
-        let baseDiff = (aStatFinal + aArmorBonus) - (dStatFinal + dArmorBonus);
+        let baseDiff = (aStatFinal + (attacker.stats?.atkArmor || 0)) - (dStatFinal + (target.stats?.defArmor || 0));
 
         let outcomes = {
             "КРИТ": { count: 0, mult: 2.0, color: '#ff00ff', flags: [true, false, true] },
@@ -310,44 +310,32 @@ export class BattleManager {
         for (let type in outcomes) {
             if (outcomes[type].count > 0) {
                 let prob = Math.round((outcomes[type].count / 25) * 100);
-                
                 let rawDmg = effectiveBase * simSkill.damageCoef * outcomes[type].mult;
                 let finalSingleDmg = Math.round(rawDmg);
 
-                // Компактная формула расчета (как в левом верхнем углу тултипа)
-                let formulaParts = [];
-                // Если база 10 и пустая левая рука (13), пишем просто "13" как стартовую базу
-                formulaParts.push(`${effectiveBase}`);
-                
-                // Если коэф. скилла не 1.0, пишем его (например x0.6)
-                if (simSkill.damageCoef !== 1 && simSkill.damageCoef !== 0) formulaParts.push(`x${simSkill.damageCoef}`);
-                
-                // Если удача не 1.0, пишем ее (например x1.5)
-                if (outcomes[type].mult !== 1 && type !== "ПРОМАХ") formulaParts.push(`x${outcomes[type].mult}`);
+                let formulaParts = [`${weaponBase}`];
+                if (hasOffhandBonus) formulaParts.push(`130%`);
+                if (simSkill.damageCoef !== 1 && simSkill.damageCoef !== 0) formulaParts.push(`${Math.round(simSkill.damageCoef * 100)}%`);
+                if (outcomes[type].mult !== 1 && type !== "ПРОМАХ") formulaParts.push(`${Math.round(outcomes[type].mult * 100)}%`);
 
-                if (attacker.hasEffect('weakness')) { finalSingleDmg = Math.round(finalSingleDmg * 0.5); formulaParts.push(`x0.5(Слаб)`); }
-                if (attacker.hasEffect('power')) { finalSingleDmg = Math.round(finalSingleDmg * 1.5); formulaParts.push(`x1.5(Сила)`); }
-                if (target.hasEffect('vulnerable')) { finalSingleDmg = Math.round(finalSingleDmg * 1.5); formulaParts.push(`x1.5(Уязв)`); }
-                if (target.hasEffect('block') && !simSkill.effect?.includes('ignorArmor')) { finalSingleDmg = Math.round(finalSingleDmg * 0.5); formulaParts.push(`x0.5(Блок)`); }
+                if (attacker.hasEffect('weakness')) { finalSingleDmg = Math.round(finalSingleDmg * 0.5); formulaParts.push(`50%(Слаб)`); }
+                if (attacker.hasEffect('power')) { finalSingleDmg = Math.round(finalSingleDmg * 1.5); formulaParts.push(`150%(Сила)`); }
+                if (target.hasEffect('vulnerable')) { finalSingleDmg = Math.round(finalSingleDmg * 1.5); formulaParts.push(`150%(Уязв)`); }
+                if (target.hasEffect('block') && !simSkill.effect?.includes('ignorArmor')) { finalSingleDmg = Math.round(finalSingleDmg * 0.5); formulaParts.push(`50%(Блок)`); }
                 
                 if (type === "ПРОМАХ") { finalSingleDmg = 0; formulaParts = ["0"]; }
 
-                let formulaStr = formulaParts.length > 1 ? `<span style="color:#666; font-size:10px; margin-right:4px;">(${formulaParts.join('')})</span>` : '';
+                let formulaStr = formulaParts.length > 1 ? `<span style="color:#666; font-size:9px; margin-right:5px;">(${formulaParts.join(' * ')})</span>` : '';
                 if (simSkill.damageCoef === 0) formulaStr = '';
 
-                // ИСПРАВЛЕНИЕ: Уточняем влияние Силы и Слабости на результат броска
                 let displayType = type;
-                if (type === "КРИТ" && attacker.hasEffect('power')) displayType = "КРИТ <span style='color:#ffbf00; font-size:10px;'>(от Силы)</span>";
-                if (type === "ПРОМАХ" && attacker.hasEffect('weakness')) displayType = "ПРОМАХ <span style='color:#aaa; font-size:10px;'>(от Слаб.)</span>";
+                if (type === "КРИТ" && attacker.hasEffect('power')) displayType = "КРИТ <span style='color:#ffbf00; font-size:10px;'>+ Сила!</span>";
+                if (type === "ПРОМАХ" && attacker.hasEffect('weakness')) displayType = "ПРОМАХ <span style='color:#aaa; font-size:10px;'>+ Слаб.</span>";
 
                 result.push({ 
-                    type: displayType, 
-                    prob, 
-                    singleDmg: finalSingleDmg, 
-                    totalDmg: finalSingleDmg * hitsCount, 
-                    hits: hitsCount,
-                    formula: formulaStr, // <--- Передаем строку формулы
-                    color: outcomes[type].color,
+                    type: displayType, prob, 
+                    singleDmg: finalSingleDmg, totalDmg: finalSingleDmg * hitsCount, hits: hitsCount,
+                    formula: formulaStr, color: outcomes[type].color,
                     isL: outcomes[type].flags[0], isU: outcomes[type].flags[1], isC: outcomes[type].flags[2]
                 });
             }
@@ -367,39 +355,43 @@ export class BattleManager {
 
         let isFriendlyCast = (skill.targetSelf || skill.targetAlly || (target && target.side === attacker.side));
 
-        if (skill.damageCoef === 0 && isFriendlyCast) {
-            let aStatBase = Number(attacker.combatStat);
-            let aStatMod = (attacker.hasEffect('speed') ? Math.round(aStatBase*0.25) : 0) - (attacker.hasEffect('daze') ? Math.round(aStatBase*0.25) : 0);
-            let dStatBase = 0, dStatMod = 0;
-            
+        let aStatBase = Number(attacker.combatStat);
+        let aStatMod = (attacker.hasEffect('speed') ? Math.round(aStatBase*0.25) : 0) - (attacker.hasEffect('daze') ? Math.round(aStatBase*0.25) : 0);
+        let dStatBase = 0, dStatMod = 0;
+        
+        if (isFriendlyCast) {
             let enemies = this.units.filter(u => u.side !== attacker.side && !u.isDead);
             if (enemies.length > 0) {
-                let strongestEnemy = enemies.reduce((prev, current) => (prev.combatStat > current.combatStat) ? prev : current);
-                dStatBase = Number(strongestEnemy.combatStat);
-                dStatMod = (strongestEnemy.hasEffect('speed') ? Math.round(dStatBase*0.25) : 0) - (strongestEnemy.hasEffect('daze') ? Math.round(dStatBase*0.25) : 0);
+                let strongest = enemies.reduce((prev, current) => (prev.combatStat > current.combatStat) ? prev : current);
+                dStatBase = Number(strongest.combatStat);
+                dStatMod = (strongest.hasEffect('speed') ? Math.round(dStatBase*0.25) : 0) - (strongest.hasEffect('daze') ? Math.round(dStatBase*0.25) : 0);
             }
-            
-            let diff = (aStatBase + aStatMod + Math.floor(Math.random() * 5) + 1 + (attacker.stats?.atkArmor || 0)) - 
-                       (dStatBase + dStatMod + Math.floor(Math.random() * 5) + 1);
-            
-            let isL = false, isU = false, isC = false;
-            let buffText = "БАФФ"; let buffColor = "#ffffff";
+        } else {
+            dStatBase = Number(target.combatStat);
+            dStatMod = (target.hasEffect('speed') ? Math.round(dStatBase*0.25) : 0) - (target.hasEffect('daze') ? Math.round(dStatBase*0.25) : 0);
+        }
+        
+        let diff = (aStatBase + aStatMod + (Math.floor(Math.random() * 5) + 1) + (attacker.stats?.atkArmor || 0)) - 
+                   (dStatBase + dStatMod + (Math.floor(Math.random() * 5) + 1) + (isFriendlyCast ? 0 : (target.stats?.defArmor || 0)));
+        
+        let isL = false, isU = false, isC = false;
+        if (diff >= 10 || (diff >= 5 && attacker.hasEffect('power'))) { isL = true; isC = true; }
+        else if (diff >= 5) isL = true;
+        else if (diff <= -10 || (diff <= -5 && attacker.hasEffect('weakness'))) isU = true;
+        else if (diff <= -5) isU = true;
 
-            if (diff >= 10 || (diff >= 5 && attacker.hasEffect('power'))) { 
-                isL = true; isC = true; buffText = "КРИТ. БАФФ"; buffColor = "#ff00ff";
-            } else if (diff >= 5) { 
-                isL = true; buffText = "УДАЧНЫЙ БАФФ"; buffColor = "#4affab";
-            } else if (diff <= -10 || (diff <= -5 && attacker.hasEffect('weakness'))) { 
+        if (i === 0) { this.lastLucky = isL; this.lastUnlucky = isU; this.lastCrit = isC; }
+
+        if (skill.damageCoef === 0 && isFriendlyCast) {
+            let buffText = "БАФФ"; let buffColor = "#ffffff";
+            if (isC) { buffText = "КРИТ. БАФФ"; buffColor = "#ff00ff"; }
+            else if (isL) { buffText = "УДАЧНЫЙ БАФФ"; buffColor = "#4affab"; }
+            else if (isU) { 
                 if (i === 0) window.spawnDamageText("ПРОМАХ", target.x, target.y - 40, "#aaa");
                 return;
-            } else if (diff <= -5) { 
-                isU = true; buffText = "НЕУДАЧНЫЙ БАФФ"; buffColor = "#ffaa44";
             }
-
             if (i === 0) window.spawnDamageText(buffText, target.x, target.y - 40, buffColor);
-            if (i === hitsCount - 1 && skill.effect) {
-                this.applySkillEffects(target, skill.effect, isL, isU, isC, attacker);
-            }
+            if (i === hitsCount - 1 && skill.effect) this.applySkillEffects(target, skill.effect, isL, isU, isC, attacker);
             return;
         }
 
@@ -408,92 +400,24 @@ export class BattleManager {
             window.spawnDamageText("УВОРОТ", target.x + 10, target.y - 40, "#fff"); return;
         }
 
-        let luckMod = 1.0, dmgColor = '#ffffff', hitType = "ОБЫЧНЫЙ";
-        let isLucky = false, isUnlucky = false, isCrit = false;
-        
-        let aStatBase = Number(attacker.combatStat);
-        let aDazeMod = attacker.hasEffect('daze') ? Math.round(aStatBase * 0.25) : 0;
-        let aSpeedMod = attacker.hasEffect('speed') ? Math.round(aStatBase * 0.25) : 0;
-        let aStatMod = aSpeedMod - aDazeMod;
-
-        let dStatBase = 0, dStatMod = 0;
-
-        if (isFriendlyCast) {
-            let enemies = this.units.filter(u => u.side !== attacker.side && !u.isDead);
-            if (enemies.length > 0) {
-                let strongestEnemy = enemies.reduce((prev, current) => (prev.combatStat > current.combatStat) ? prev : current);
-                dStatBase = Number(strongestEnemy.combatStat);
-                dStatMod = (strongestEnemy.hasEffect('speed') ? Math.round(dStatBase * 0.25) : 0) - (strongestEnemy.hasEffect('daze') ? Math.round(dStatBase * 0.25) : 0);
-            }
-        } else {
-            dStatBase = Number(target.combatStat);
-            dStatMod = (target.hasEffect('speed') ? Math.round(dStatBase * 0.25) : 0) - (target.hasEffect('daze') ? Math.round(dStatBase * 0.25) : 0);
+        if (isU && attacker.hasEffect('weakness')) {
+            window.spawnDamageText("ПРОМАХ", target.x + 10, target.y - 40, "#aaa"); return;
         }
 
-        let aStatFinal = aStatBase + aStatMod;
-        let dStatFinal = dStatBase + dStatMod;
-
-        let atkR = Math.floor(Math.random() * 5) + 1; 
-        let defR = Math.floor(Math.random() * 5) + 1; 
-
-        let aArmorBonus = attacker.stats?.atkArmor || 0;
-        let dArmorBonus = isFriendlyCast ? 0 : (target.stats?.defArmor || 0);
-
-        let diff = (aStatFinal + atkR + aArmorBonus) - (dStatFinal + defR + dArmorBonus);
-        this.lastDiff = diff;
-
-        if (diff >= 10 || (diff >= 5 && attacker.hasEffect('power'))) {
-            luckMod = 2.0; hitType = "КРИТИЧЕСКИЙ"; isLucky = true; isCrit = true; dmgColor = "#ff00ff";
-        } else if (diff >= 5) {
-            luckMod = 1.5; hitType = "УДАЧНЫЙ"; isLucky = true; dmgColor = (attacker.side==='player'?'#4affab':'#ff4444');
-        } else if (diff <= -10 || (diff <= -5 && attacker.hasEffect('weakness'))) {
-            luckMod = 0.0; hitType = "ПРОМАХ"; isUnlucky = true; dmgColor = "#aaa";
-        } else if (diff <= -5) {
-            luckMod = 0.5; hitType = "НЕУДАЧНЫЙ"; isUnlucky = true; dmgColor = (attacker.side==='player'?'#ff4444':'#4affab');
-        }
+        let luckMult = isC ? 2.0 : (isL ? 1.5 : (isU ? 0.5 : 1.0));
+        let finalDmg = Math.round(effectiveBase * skill.damageCoef * luckMult);
         
-        let aModStr = aStatMod !== 0 ? `<span style="color:#ffaa44">(${aStatMod > 0 ? '+'+aStatMod : aStatMod} от эфф)</span>` : '';
-        let dModStr = dStatMod !== 0 ? `<span style="color:#ffaa44">(${dStatMod > 0 ? '+'+dStatMod : dStatMod} от эфф)</span>` : '';
-        let atkStr = `${aStatBase}${aModStr} + ${atkR}🎲 + ${aArmorBonus}🛡️`;
-        let defStr = `${dStatBase}${dModStr} + ${defR}🎲 + ${dArmorBonus}🛡️`;
-        
-        this.log(`Атака [${atkStr}] vs Защита [${defStr}]`);
-        let colorDiff = diff >= 5 ? '#4affab' : (diff <= -5 ? '#ff4444' : '#fff');
-        this.log(`Итог: Разница <span style="color:${colorDiff}">${diff}</span> -> <b>${hitType}</b>`);
-
-        if (hitType === "ПРОМАХ") { 
-            window.spawnDamageText("ПРОМАХ", target.x + 10, target.y - 40, "#aaa"); 
-            return; 
-        }
-        
-        let baseDmgStr = effectiveBase;
-        let coefStr = skill.damageCoef;
-        let luckStr = luckMod;
-        let rawDmg = effectiveBase * skill.damageCoef * luckMod;
-        let finalDmg = Math.round(rawDmg);
-        
-        let dmgLogParts = [];
-        if (attacker.hasEffect('weakness')) { finalDmg = Math.round(finalDmg * 0.5); dmgLogParts.push("x0.5 Слаб"); }
-        if (attacker.hasEffect('power')) { finalDmg = Math.round(finalDmg * 1.5); dmgLogParts.push("x1.5 Сила"); }
-        if (target.hasEffect('vulnerable')) { finalDmg = Math.round(finalDmg * 1.5); dmgLogParts.push("x1.5 Уязв"); }
+        if (attacker.hasEffect('weakness')) finalDmg = Math.round(finalDmg * 0.5);
+        if (attacker.hasEffect('power')) finalDmg = Math.round(finalDmg * 1.5);
+        if (target.hasEffect('vulnerable')) finalDmg = Math.round(finalDmg * 1.5);
         if (target.hasEffect('block') && !skill.effect?.includes('ignorArmor')) { 
             finalDmg = Math.round(finalDmg * 0.5); 
             target.modifyEffect('block', -1); 
-            dmgLogParts.push("x0.5 Блок");
-        }
-        
-        let modsStr = dmgLogParts.length > 0 ? ` => [${dmgLogParts.join(', ')}]` : '';
-        this.log(`🗡 Урон: (${effectiveBase} x ${skill.damageCoef}) x ${luckMod} Удача = ${Math.round(rawDmg)}${modsStr} => <b>${finalDmg}</b>`);
-
-        if (i === 0) {
-            if (attacker.hasEffect('power')) attacker.modifyEffect('power', -1);
-            if (attacker.hasEffect('weakness')) attacker.modifyEffect('weakness', -1);
         }
 
         if (finalDmg > 0) {
             target.takeDamage(finalDmg);
-            window.spawnDamageText(`-${finalDmg}`, target.x + 20, target.y - 20, dmgColor);
-            
+            window.spawnDamageText(`-${finalDmg}`, target.x + 20, target.y - 20, isC ? "#ff00ff" : (isL ? "#4affab" : "#fff"));
             target.tickEffectsByTrigger('hitReceived');
             attacker.tickEffectsByTrigger('hitGiven');
             
@@ -502,35 +426,25 @@ export class BattleManager {
                 target.addEffect(EFFECTS.DOT, 3, { damagePerTurn: 2 });
                 this.log(`[РАНА] Удар вскрыл зияющую рану!`);
             }
-
             if (target.hasEffect('instability') && !target.isDead) {
-                let shift = 0;
-                let alliesCount = this.units.filter(u => u.side === target.side && !u.isDead).length;
-                
-                if (target.posIdx === 1) shift = 1; 
-                else if (target.posIdx === alliesCount) shift = -1; 
-                else shift = Math.random() > 0.5 ? 1 : -1; 
-
-                this.log(`[НЕУСТОЙЧИВОСТЬ] ${target.name} теряет равновесие!`);
+                let shift = (target.posIdx === 1) ? 1 : (target.posIdx === 4 ? -1 : (Math.random() > 0.5 ? 1 : -1));
                 this.moveUnit(target, shift);
             }
-
             if (target.isDead) {
-                this.log(`☠️ ${target.name.toUpperCase()} ПОГИБАЕТ!`);
                 this.turnQueue = this.turnQueue.filter(u => !u.isDead);
                 this.uiCallback(this.getActiveUnit(), [], this);
             }
         }
 
         if (i === hitsCount - 1) {
-            if (skill.effect) this.applySkillEffects(target, skill.effect, isLucky, isUnlucky, isCrit, attacker);
+            if (skill.effect) this.applySkillEffects(target, skill.effect, isL, isU, isC, attacker);
             if (!target.isDead) this.checkParrying(attacker, target, skill); 
         }
     }
 
     checkParrying(attacker, target, skill) {
         if (target.hasEffect('parry') && !skill.effect?.includes('ignorParry') && attacker !== target && !skill.targetAlly) {
-            target.modifyEffect('parry', -1); // <-- ИСПРАВЛЕНО ЗДЕСЬ
+            target.modifyEffect('parry', -1);
             let cDmg = target.equipment?.rightHand?.baseDamage || 10;
             attacker.takeDamage(cDmg);
             window.spawnDamageText(`-${cDmg}`, attacker.x + 20, attacker.y - 20, '#ffbb00');
@@ -540,7 +454,8 @@ export class BattleManager {
 
     applySkillEffects(target, effectString, isLucky, isUnlucky, isCrit, attacker = null) {
         if (!effectString) return;
-        const NO_SCALE = ['SHUFFLE', 'MOVETARGET', 'MOVESELF'];
+        
+        const NO_SCALE = ['SHUFFLE', 'MOVETARGET', 'MOVESELF', 'REMOVETAUNTALL'];
         
         effectString.split(',').forEach(part => {
             let p = part.trim(); let curTarget = target;
@@ -560,56 +475,62 @@ export class BattleManager {
             if (val === 0 && !NO_SCALE.includes(id)) return;
 
             let dur = EFFECTS[id]?.duration || 4;
-            if (isCrit) dur += 2;
-            else if (isLucky) dur += 1;
-            else if (isUnlucky) dur -= 1;
-            dur = Math.max(1, dur);
+            if (!NO_SCALE.includes(id)) {
+                if (isCrit) dur += 2;
+                else if (isLucky) dur += 1;
+                else if (isUnlucky) dur -= 1;
+                dur = Math.max(1, dur);
+            }
 
             if (id === 'SHUFFLE') {
                 this.shuffleUnits(curTarget.side);
             } 
+            else if (id === 'REMOVETAUNTALL') {
+            }
             else if (id === 'DOT') {
                 let dotDmg = parseInt(params[2]) || 2;
-                
-                // ИСПРАВЛЕНИЕ: Масштабируем УРОН кровотечения в зависимости от броска
                 if (isCrit) dotDmg += 2;
                 else if (isLucky) dotDmg += 1;
                 else if (isUnlucky) dotDmg -= 1;
-                dotDmg = Math.max(1, dotDmg); // Урон от ДОТа не может быть меньше 1
+                dotDmg = Math.max(1, dotDmg);
 
                 curTarget.addEffect(EFFECTS.DOT, 1, { duration: val, damagePerTurn: dotDmg });
             } else if (EFFECTS[id]) {
-                curTarget.addEffect(EFFECTS[id], val, { duration: dur }); // Передаем новую длительность!
+                curTarget.addEffect(EFFECTS[id], val, { duration: dur });
                 if ((id === 'DAZE' || id === 'SPEED') && curTarget === target) this.updateQueueInitiative();
             }
         });
     }
 
-    // Вспомогательный метод для Дрожи Земли
     shuffleUnits(side) {
         let alive = this.units.filter(u => u.side === side && !u.isDead);
         if (alive.length <= 1) return;
         this.log(`[ПЕРЕМЕШИВАНИЕ] Строй ${side === 'player' ? 'погруженцев' : 'врагов'} нарушен!`);
         
-        // Алгоритм Фишера-Йетса для самого массива юнитов
         for (let i = alive.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [alive[i], alive[j]] = [alive[j], alive[i]];
         }
         
-        // Раздаем новые позиции по порядку (1, 2, 3, 4...)
         alive.forEach((unit, idx) => {
             unit.posIdx = idx + 1;
         });
     }
 
     finalizeSkill(attacker, primaryTarget, skill) {
-        // Вычисляем базу заново
         let weaponBase = attacker.equipment?.rightHand?.baseDamage || 10;
         let effectiveBase = (attacker.equipment && attacker.equipment.leftHand === null) ? Math.round(weaponBase * 1.3) : weaponBase;
+
+        if (skill.id === 'rapidFire') {
+            attacker.modifyEffect('combo', -1);
+            attacker.addEffect(EFFECTS.RAPIDFIRE, 3);
+            this.log(`[СКОРОСТРЕЛЬНОСТЬ] ${attacker.name} готовится!`);
+        }
         
-        // Запускаем этап ПОСЛЕ удара (Рикошет и т.д.)
-        SkillLogic.applyPostStrikeModifiers(this, attacker, primaryTarget, skill, effectiveBase);
+        SkillLogic.applyPostStrikeModifiers(
+            this, attacker, primaryTarget, skill, effectiveBase, 
+            this.lastLucky, this.lastUnlucky, this.lastCrit
+        );
 
         if (skill && skill.moveSelf) this.moveUnit(attacker, skill.moveSelf);
         if (skill && skill.moveTarget && primaryTarget !== attacker) this.moveUnit(primaryTarget, skill.moveTarget);
@@ -634,8 +555,10 @@ export class BattleManager {
 
     moveUnit(unit, offset) {
         let newPos = Math.max(1, Math.min(4, unit.posIdx + offset));
-        
-        if (newPos < unit.posIdx) {
+
+        if (newPos !== unit.posIdx) {
+            
+            if (newPos < unit.posIdx) {
                 let overwatchers = this.units.filter(u => u.side !== unit.side && u.hasEffect('noOneStepFurther') && !u.isDead);
                 
                 overwatchers.forEach(watcher => {
@@ -644,58 +567,67 @@ export class BattleManager {
                     let baseDmg = watcher.equipment?.rightHand?.baseDamage || 10;
                     if (watcher.equipment && watcher.equipment.leftHand === null) baseDmg = Math.round(baseDmg * 1.3);
                     
-                    let stanceEffect = watcher.getEffect('noOneStepFurther');
-                    
-                    // ИСПРАВЛЕНИЕ: Достаем множитель. Если стойка наложена скиллом 3-4 уровня, там будет что-то вроде noOneStepFurther-3-12 (где 12 это 1.2)
-                    // Мы парсили это как val, но для урона мы заложили это в сам эффект (или достанем из названия)
-                    let multiplier = 1.0;
-                    if (stanceEffect && stanceEffect.base.damageCoef) multiplier = stanceEffect.base.damageCoef; // Если прописано жестко
-                    // Если множитель передан через '-' (например noOneStepFurther-1-12) мы это не парсили. 
-                    // Сделаем проще: если у оружия 3-4 уровень, даем бонус 1.2 (как ты и просил).
                     let wLvl = watcher.equipment?.rightHand?.level || 1;
-                    if (wLvl >= 3) multiplier = 1.2;
+                    let multiplier = (wLvl >= 3) ? 1.2 : 1.0;
 
                     let atkR = Math.floor(Math.random() * 5) + 1;
                     let defR = Math.floor(Math.random() * 5) + 1;
                     let diff = (watcher.combatStat + atkR) - (unit.combatStat + defR);
                     
                     let luckMod = 1.0;
-                    if (diff >= 5) luckMod = 1.5;
-                    if (diff <= -5) luckMod = 0.5;
+                    let hitType = "ОБЫЧНЫЙ";
+                    let isL = false, isU = false, isC = false;
+
+                    if (diff >= 10 || (diff >= 5 && watcher.hasEffect('power'))) {
+                        luckMod = 2.0; hitType = "КРИТИЧЕСКИЙ"; isL = true; isC = true;
+                    } else if (diff >= 5) {
+                        luckMod = 1.5; hitType = "УДАЧНЫЙ"; isL = true;
+                    } else if (diff <= -10 || (diff <= -5 && watcher.hasEffect('weakness'))) {
+                        luckMod = 0.0; hitType = "ПРОМАХ"; isU = true;
+                    } else if (diff <= -5) {
+                        luckMod = 0.5; hitType = "НЕУДАЧНЫЙ"; isU = true;
+                    }
 
                     let finalDmg = Math.round(baseDmg * multiplier * luckMod);
-                    
-                    // ИСПРАВЛЕНИЕ: АНИМАЦИЯ ТЫЧКА (Копейщик дергается в сторону врага)
                     watcher.offsetX = watcher.side === 'player' ? 30 : -30;
                     
                     setTimeout(() => {
-                        if (finalDmg > 0) {
-                            unit.takeDamage(finalDmg);
-                            window.spawnDamageText(`-${finalDmg}`, unit.x + 20, unit.y - 20, '#ffbf00'); 
-                        } else {
+                        if (hitType === "ПРОМАХ") {
                             window.spawnDamageText("ПРОМАХ", unit.x + 10, unit.y - 40, "#aaa");
+                        } else if (finalDmg > 0) {
+                            unit.takeDamage(finalDmg);
+                            let dmgColor = (hitType === "КРИТИЧЕСКИЙ") ? "#ff00ff" : "#ffbf00";
+                            window.spawnDamageText(`-${finalDmg}`, unit.x + 20, unit.y - 20, dmgColor); 
                         }
-                    }, 150); // Урон прилетает чуть позже, на пике рывка
+                    }, 150);
                     
                     watcher.modifyEffect('noOneStepFurther', -1);
                 });
+            }
 
             this.shiftUnits(unit, newPos);
         }
     }
 
     shiftUnits(movingUnit, targetPos) {
+        if (movingUnit.isEnvironment) return;
+        
         const side = movingUnit.side;
         const oldPos = movingUnit.posIdx;
-        let allies = this.units.filter(u => u.side === side && !u.isDead);
-        if (oldPos < targetPos) allies.forEach(u => { if (u !== movingUnit && u.posIdx > oldPos && u.posIdx <= targetPos) u.posIdx -= 1; });
-        else if (oldPos > targetPos) allies.forEach(u => { if (u !== movingUnit && u.posIdx >= targetPos && u.posIdx < oldPos) u.posIdx += 1; });
+        
+        let allies = this.units.filter(u => u.side === side && !u.isDead && !u.isEnvironment);
+        
+        if (oldPos < targetPos) {
+            allies.forEach(u => { if (u !== movingUnit && u.posIdx > oldPos && u.posIdx <= targetPos) u.posIdx -= 1; });
+        } else if (oldPos > targetPos) {
+            allies.forEach(u => { if (u !== movingUnit && u.posIdx >= targetPos && u.posIdx < oldPos) u.posIdx += 1; });
+        }
         movingUnit.posIdx = targetPos;
     }
 
     autoShiftUnits() {
         ['player', 'enemy'].forEach(side => {
-            let alive = this.units.filter(u => u.side === side && !u.isDead).sort((a, b) => a.posIdx - b.posIdx);
+            let alive = this.units.filter(u => u.side === side && !u.isDead && !u.isEnvironment).sort((a, b) => a.posIdx - b.posIdx);
             alive.forEach((u, i) => u.posIdx = i + 1);
         });
     }
@@ -724,12 +656,75 @@ export class BattleManager {
 
         if (active && !active.isDead) active.tickEffectsByTrigger('turnEnd');
         this.autoShiftUnits();
-        this.turnQueue.shift();
-        this.state = 'IDLE';
         
+        let justFinished = active;
+        this.turnQueue.shift();
+
+        this.processOverwatch(justFinished);
+    }
+
+    processOverwatch(justFinished) {
+        this.state = 'IDLE';
+
+        if (justFinished && justFinished.side === 'player' && !justFinished.isDead) {
+            let overwatchers = this.units.filter(u => u.side === 'player' && u.hasEffect('rapidFire') && !u.isDead && u !== justFinished);
+            
+            if (overwatchers.length > 0) {
+                this.state = 'EXECUTING'; 
+
+                overwatchers.forEach(archer => {
+                    let enemies = this.units.filter(u => u.side !== 'player' && !u.isDead);
+                    
+                    if (enemies.length > 0) {
+                        let target = enemies[Math.floor(Math.random() * enemies.length)];
+                        this.log(`<span style="color:#ffbf00">[ПРИКРЫТИЕ] ${archer.name} делает выстрел навскидку!</span>`);
+                        
+                        let baseDmg = archer.equipment?.rightHand?.baseDamage || 10;
+                        if (archer.equipment && archer.equipment.leftHand === null) baseDmg = Math.round(baseDmg * 1.3);
+                        
+                        let atkR = Math.floor(Math.random() * 5) + 1;
+                        let defR = Math.floor(Math.random() * 5) + 1;
+                        let diff = (archer.combatStat + atkR) - (target.combatStat + defR);
+                        
+                        let luckMod = 1.0; let isC = false;
+                        if (diff >= 10) { luckMod = 2.0; isC = true; }
+                        else if (diff >= 5) luckMod = 1.5;
+                        else if (diff <= -10) luckMod = 0.0;
+                        else if (diff <= -5) luckMod = 0.5;
+
+                        let finalDmg = Math.round(baseDmg * luckMod);
+                        archer.offsetX = 30; 
+                        
+                        setTimeout(() => {
+                            if (luckMod === 0.0) {
+                                window.spawnDamageText("ПРОМАХ", target.x + 10, target.y - 40, "#aaa");
+                            } else {
+                                target.takeDamage(finalDmg);
+                                window.spawnDamageText(`-${finalDmg}`, target.x + 20, target.y - 20, isC ? '#ff00ff' : '#fff');
+                                if (target.isDead) this.autoShiftUnits();
+                            }
+                        }, 150);
+                    }
+                });
+
+                setTimeout(() => this.checkWinAndContinue(), 600);
+                return; 
+            }
+        }
+
+        this.checkWinAndContinue();
+    }
+
+    checkWinAndContinue() {
+        this.state = 'IDLE';
         const players = this.units.filter(u => u.side === 'player' && !u.isDead).length;
         const enemies = this.units.filter(u => u.side === 'enemy' && !u.isDead).length;
-        if (players === 0 || enemies === 0) { this.log(players === 0 ? "ПОРАЖЕНИЕ..." : "ПОБЕДА!"); return; }
+        
+        if (players === 0 || enemies === 0) { 
+            this.log(players === 0 ? "ПОРАЖЕНИЕ..." : "ПОБЕДА!"); 
+            return; 
+        }
+        
         this.startTurn();
     }
 }

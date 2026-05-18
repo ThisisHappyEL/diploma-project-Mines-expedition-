@@ -4,7 +4,7 @@ export const BattleUIHelper = {
     translateEffect(effectString, isLucky = false, isUnlucky = false, isCrit = false, isSusceptible = false) {
         if (!effectString) return [];
         let translated = [];
-        const NO_SCALE = ['SHUFFLE', 'MOVETARGET', 'MOVESELF']; 
+        const NO_SCALE = ['SHUFFLE', 'MOVETARGET', 'MOVESELF', 'REMOVETAUNTALL']; 
 
         let hasSelf = false;
         let hasAlly = false;
@@ -41,7 +41,6 @@ export const BattleUIHelper = {
                 else if (isLucky) dotDmg += 1;
                 else if (isUnlucky) dotDmg -= 1;
                 
-                // ИСПРАВЛЕНИЕ: Влияние восприимчивости
                 if (isSusceptible) {
                     dotDmg += 1;
                     val += 1;
@@ -52,7 +51,6 @@ export const BattleUIHelper = {
                 if (isSusceptible) text += " <span style='color:#b19cd9; font-size:9px;'>(Восприимч.)</span>";
 
             } else if (effectBase) {
-                // ИСПРАВЛЕНИЕ: Восприимчивость увеличивает длительность и жетоны (если это дебафф)
                 if (isSusceptible && effectBase.type === 'debuff') val += 1;
                 text = `${effectBase.name} (${val})`; 
                 if (isSusceptible && effectBase.type === 'debuff') text += " <span style='color:#b19cd9; font-size:9px;'>(Восприимч.)</span>";
@@ -103,7 +101,6 @@ export const BattleUIHelper = {
         let hasOffhandBonus = (attacker?.equipment && attacker.equipment.leftHand === null);
         let effectiveBase = hasOffhandBonus ? Math.round(weaponBase * 1.3) : weaponBase;
 
-        // Формируем красивую базу для вывода
         let baseStr = `${weaponBase}`;
         if (hasOffhandBonus) baseStr += ` * 130%`;
 
@@ -111,13 +108,23 @@ export const BattleUIHelper = {
             if (!reward) return "Нет данных";
             if (typeof reward === 'string') return reward;
             let p = [];
-            if (reward.hits) p.push(`<span style="color:#ffbf00">Кол-во ударов: ${reward.hits}</span>`);
+            if (reward.hits) p.push(`<span style="color:#ffbf00">Ударов: ${reward.hits}</span>`);
             if (reward.damageCoef) {
                 let d = Math.round(effectiveBase * reward.damageCoef);
-                let coefPct = Math.round(reward.damageCoef * 100); // Превращаем в проценты
-                p.push(`Урон: ${skill.hits > 1 || reward.hits > 1 ? (reward.hits || skill.hits)+'x' : ''}${d} <small style="color:#888;">(База ${baseStr} * ${coefPct}%)</small>`);
+                let pct = Math.round(reward.damageCoef * 100);
+                p.push(`Урон: ${skill.hits > 1 || reward.hits > 1 ? (reward.hits || skill.hits)+'x' : ''}${d} <small style="color:#888;">(База ${baseStr} * ${pct}%)</small>`);
             }
             if (reward.effect) p.push(...this.translateEffect(reward.effect));
+
+            if (reward.moveTarget) {
+                let dir = reward.moveTarget > 0 ? 'Назад' : 'Вперед';
+                p.push(`<span style="color:#ffbf00; font-weight:bold;">Цель:</span> <span class="tt-move">${dir} ${Math.abs(reward.moveTarget)}</span>`);
+            }
+            if (reward.moveSelf) {
+                let dir = reward.moveSelf > 0 ? 'Назад' : 'Вперед';
+                p.push(`<span style="color:#ffbf00; font-weight:bold;">Погруженец:</span> <span class="tt-move">${dir} ${Math.abs(reward.moveSelf)}</span>`);
+            }
+            
             return p.length > 0 ? p.join(', ') : "Свойства улучшены";
         };
 
@@ -126,8 +133,8 @@ export const BattleUIHelper = {
         }
 
         let finalDmg = Math.round(effectiveBase * (skill.damageCoef || 0));
-        let coefPctMain = Math.round((skill.damageCoef || 0) * 100);
-        let dmgDisplay = finalDmg > 0 ? `<div class="tt-dmg" style="margin:0; font-size:16px;">Урон: ${skill.hits > 1 ? skill.hits+'x' : ''}${finalDmg} <small style="color:#888; font-weight:normal; font-size:12px;">(База ${baseStr} * ${coefPctMain}%)</small></div>` : "";
+        let coefPct = Math.round((skill.damageCoef || 0) * 100);
+        let dmgDisplay = finalDmg > 0 ? `<div class="tt-dmg" style="margin:0; font-size:16px;">Урон: ${skill.hits > 1 ? skill.hits+'x' : ''}${finalDmg} <small style="color:#888; font-weight:normal; font-size:12px;">(База ${baseStr} * ${coefPct}%)</small></div>` : "";
 
         let leftHTML = `
             <div style="display:flex; justify-content:space-between; align-items: flex-start;">
@@ -142,16 +149,19 @@ export const BattleUIHelper = {
         let rightChunks = [];
         
         if (skill.id === 'flareBolt') {
-            rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">По врагу:</span> <span class="tt-debuff">Уязвимость (1)</span>, <span class="tt-debuff">Метка (1)</span><br><span style="color:#ffbf00; font-weight:bold;">По союзнику:</span> <span class="tt-buff">Провокация (1)</span><br><span style="color:#ffbf00; font-weight:bold;">Ост. союзники:</span> <span class="tt-buff">Уклонение (1)</span></div>`);
+            rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">По врагу:</span> <span class="tt-debuff">Уязвимость (1)</span>, <span class="tt-debuff">Метка (1)</span> <span style="margin:0 6px; color:#555;">|</span> <span style="color:#ffbf00; font-weight:bold;">По союзнику:</span> <span class="tt-buff">Провокация (1)</span> <span style="margin:0 6px; color:#555;">|</span> <span style="color:#ffbf00; font-weight:bold;">Ост. союзники:</span> <span class="tt-buff">Уклонение (1)</span></div>`);
         }
         else if (skill.id === 'invigoratingRicochet') {
-            rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">Цель:</span> <span class="tt-debuff">Слабость (1)</span><br><span style="color:#ffbf00; font-weight:bold;">Зерк. союзник:</span> <span class="tt-buff">Сила (1)</span></div>`);
+            rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">Цель:</span> <span class="tt-debuff">Слабость (1)</span> <span style="margin:0 6px; color:#555;">|</span> <span style="color:#ffbf00; font-weight:bold;">Зерк. союзник:</span> <span class="tt-buff">Сила (1)</span></div>`);
         }
         else if (skill.id === 'duck') {
             rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">Передовые союзники:</span> <span class="tt-buff">Комбо (1)</span></div>`);
         }
         else if (skill.id === 'sweep') {
             rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">Цель:</span> <span class="tt-move">Вперед 1</span></div>`);
+        }
+        else if (skill.id === 'prickAndShot') {
+            rightChunks.push(`<div style="font-size:13px; line-height:1.4;"><span style="color:#ffbf00; font-weight:bold;">Первый враг:</span> <span class="tt-debuff">Кровотечение (2 ур, 3 ход)</span></div>`);
         }
         else {
             let targetLine = []; let selfLine = []; let allyLine = [];
@@ -161,8 +171,7 @@ export const BattleUIHelper = {
                 let parts = skill.effect.split(',');
                 parts.forEach(p => {
                     let clean = p.trim();
-                    let translatedStr = this.translateEffect(clean)[0].replace('Погруженец: ', '').replace('Союзник: ', '');
-                    
+                    let translatedStr = this.translateEffect(clean)[0];
                     if (forceSelf) selfLine.push(translatedStr);
                     else if (clean.toLowerCase().startsWith('self ')) selfLine.push(translatedStr);
                     else if (clean.toLowerCase().startsWith('ally ')) allyLine.push(translatedStr);
@@ -180,13 +189,13 @@ export const BattleUIHelper = {
                 selfLine.push(`<span class="tt-move">${dir} ${Math.abs(skill.moveSelf)}</span>`);
             }
 
-            let combinedHTML = "";
-            if (targetLine.length > 0) combinedHTML += `<span style="color:#ffbf00; font-weight:bold;">Цель:</span> ${targetLine.join(', ')}<br>`;
-            if (selfLine.length > 0) combinedHTML += `<span style="color:#ffbf00; font-weight:bold;">Погруженец:</span> ${selfLine.join(', ')}<br>`;
-            if (allyLine.length > 0) combinedHTML += `<span style="color:#ffbf00; font-weight:bold;">Союзник:</span> ${allyLine.join(', ')}<br>`;
+            let combinedBlocks = [];
+            if (targetLine.length > 0) combinedBlocks.push(`<span style="color:#ffbf00; font-weight:bold;">Цель:</span> ${targetLine.join(', ')}`);
+            if (selfLine.length > 0) combinedBlocks.push(`<span style="color:#ffbf00; font-weight:bold;">Погруженец:</span> ${selfLine.join(', ')}`);
+            if (allyLine.length > 0) combinedBlocks.push(`<span style="color:#ffbf00; font-weight:bold;">Союзник:</span> ${allyLine.join(', ')}`);
 
-            if (combinedHTML) {
-                rightChunks.push(`<div style="font-size:13px; line-height:1.4;">${combinedHTML}</div>`);
+            if (combinedBlocks.length > 0) {
+                rightChunks.push(`<div style="font-size:13px; line-height:1.4;">${combinedBlocks.join('<span style="margin: 0 6px; color:#555;">|</span>')}</div>`);
             }
         }
 

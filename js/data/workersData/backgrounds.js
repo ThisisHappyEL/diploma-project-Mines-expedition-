@@ -34,12 +34,12 @@ export const BACKGROUNDS = {
     },
     "Паломник": {
         tier: 1, salary: 6, category: "Маргинал, Полезный умс. труд, Изолированный", profile: "Разведка",
-        description: "Ищет святыню на глубине.",
+        description: "Не ясно какие святые места он будет искать на глубине, но отговаривать вы его не будете.",
         stats: { hp: [34, 40], stamina: [90, 100], battle: [3, 5], mining: [4, 6], research: [8, 9], construction: [3, 5], scouting: [8, 9] }
     },
     "Крысиный заводчик": {
         tier: 1, salary: 6, category: "Пищевой, Низкорожденный, Грязная работа", profile: "Разведка, Добыча",
-        description: "Ищет крысу-чемпиона там, где другие не рискнут.",
+        description: "Не иначе как надеется найти крысу-чемпиона там, куда прочие не забрались бы.",
         stats: { hp: [32, 38], stamina: [85, 95], battle: [4, 6], mining: [8, 9], research: [4, 6], construction: [5, 7], scouting: [7, 9] }
     },
     "Шут": {
