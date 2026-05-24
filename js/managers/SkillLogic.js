@@ -95,10 +95,22 @@ export const SkillLogic = {
             skill.effect = skill.effect ? skill.effect + ', stun-1' : 'stun-1';
             if (!isPrediction) manager.log(`[БОЛЬШЕ ПОРОХА] Усиленный выстрел оглушает цель!`);
         }
+
+        if (['glassMeleeEnhanced', 'glassRangedEnhanced', 'amalgamWound', 'amalgamHeavyDash', 'vitrailMeleeEnhanced', 'vitrailChargeEnhanced', 'motherSpawnGlass'].includes(skill.id)) {
+            if (!isPrediction) attacker.modifyEffect('combo', -1);
+        }
+        if (skill.id === 'glassWeb', 'motherSpawnAmalgam') {
+            if (!isPrediction) attacker.modifyEffect('combo', -2);
+        }
+
+        if (skill.id === 'motherSpawnVitrail') {
+            if (!isPrediction) attacker.modifyEffect('combo', -4);
+        }
     },
 
     applyPostStrikeModifiers(manager, attacker, primaryTarget, skill, effectiveBase, isL = false, isU = false, isC = false) {
-        
+        let hitType = manager.lastHitType || "ОБЫЧНЫЙ";
+
         if (skill.id === 'sweep') {
             let targetsToMove = manager.units.filter(u => u.side !== attacker.side && !u.isDead && (u.posIdx === 3 || u.posIdx === 4));
             targetsToMove.forEach(t => manager.moveUnit(t, -1));
@@ -186,6 +198,110 @@ export const SkillLogic = {
 
         if (attacker.hasEffect('morePowder') && !skill.targetSelf && !skill.targetAlly && skill.damageCoef > 0) {
             attacker.modifyEffect('morePowder', -1);
+        }
+        if (hitType === "ПРОМАХ" && ['glassFeedSelf', 'glassFeedAlly', 'glassGrowMites', 'amalgamFeedSelf'].includes(skill.id)) {
+            manager.log(`[ПРОМАХ] ${attacker.name} суетится и совершает критическую ошибку!`);
+            return; 
+        }
+        if (['glassFeedSelf', 'glassFeedAlly', 'amalgamFeedSelf'].includes(skill.id)) {
+            let crystal = manager.units.find(u => u.isEnvironment);
+            let target = ['glassFeedSelf', 'amalgamFeedSelf'].includes(skill.id) ? attacker : primaryTarget;
+            
+            let currentCombo = target.getEffect('combo')?.count || 0;
+            let tMaxCombo = target.maxCombo || 2; 
+            let missingCombo = tMaxCombo - currentCombo;
+            
+            let availablePairs = Math.floor((crystal?.getEffect('mites')?.count || 0) / 2);
+            let comboToGive = Math.min(missingCombo, availablePairs);
+
+            if (crystal && comboToGive > 0) {
+                crystal.modifyEffect('mites', -(comboToGive * 2));
+                
+                if (hitType === "КРИТ") {
+                    comboToGive += 2; 
+                    target.addEffect(EFFECTS.POWER, 1); 
+                    window.spawnDamageText(`СИЛА (+1)`, target.x, target.y - 40, "#ff00ff");
+                } else if (hitType === "УДАЧНЫЙ") {
+                    comboToGive += 1; 
+                    target.addEffect(EFFECTS.SPEED, 1); 
+                    window.spawnDamageText(`СКОРОСТЬ (+1)`, target.x, target.y - 40, "#ff8844");
+                } else if (hitType === "НЕУДАЧНЫЙ") {
+                    comboToGive -= 1;
+                    manager.log(`[НЕУДАЧА] ${attacker.name} давится клещами, теряя часть эффекта.`);
+                }
+
+                comboToGive = Math.max(0, comboToGive);
+
+                if (comboToGive > 0) {
+                    target.addEffect(EFFECTS.COMBO, comboToGive);
+                    window.spawnDamageText(`КОМБО (+${comboToGive})`, target.x, target.y - 20, hitType === "КРИТ" ? "#ff00ff" : (hitType === "НЕУДАЧНЫЙ" ? "#ffaa44" : "#4affab"));
+                    manager.log(`[СИНЕРГИЯ РОЯ] ${target.name} поглощает клещей (+${comboToGive} комбо)!`);
+                } else {
+                    window.spawnDamageText(`ПРОВАЛ`, target.x, target.y - 20, "#ffaa44");
+                }
+            }
+        }
+
+        if (skill.id === 'glassGrowMites') {
+            let crystal = manager.units.find(u => u.isEnvironment);
+            if (crystal) {
+                let mites = crystal.getEffect('mites');
+                let currentCount = mites ? mites.count : 0;
+                let growth = currentCount > 5 ? 4 : (currentCount >= 3 ? 3 : (currentCount >= 1 ? 2 : 1));
+                
+                if (hitType === "КРИТ") growth += 2; 
+                else if (hitType === "УДАЧНЫЙ") growth += 1; 
+                else if (hitType === "НЕУДАЧНЫЙ") growth -= 1;
+
+                growth = Math.max(0, growth);
+
+                if (growth > 0) {
+                    crystal.addEffect(EFFECTS.MITES, growth);
+                    manager.log(`[ЗАБОТА] ${attacker.name} расплодил клещей (+${growth})!`);
+                    window.spawnDamageText(`+${growth} КЛЕЩЕЙ`, crystal.x, crystal.y - 20, hitType === "КРИТ" ? "#ff00ff" : (hitType === "НЕУДАЧНЫЙ" ? "#ffaa44" : "#b19cd9"));
+                } else {
+                    window.spawnDamageText(`ПУСТО`, crystal.x, crystal.y - 20, "#ffaa44");
+                }
+            }
+        }
+
+        if (skill.id === 'vitrailStealCombo') {
+            if (hitType === "ПРОМАХ") return;
+            let totalStolen = 0;
+            let allies = manager.units.filter(u => u.side === attacker.side && u !== attacker && !u.isDead && u.hasEffect('combo'));
+            allies.forEach(a => {
+                let count = a.getEffect('combo').count;
+                a.modifyEffect('combo', -count);
+                totalStolen += count;
+                window.spawnDamageText(`-КОМБО`, a.x, a.y - 20, "#ffaa44");
+            });
+
+            if (hitType === "КРИТ") totalStolen += 2;
+            else if (hitType === "УДАЧНЫЙ") totalStolen += 1;
+            else if (hitType === "НЕУДАЧНЫЙ") totalStolen -= 1;
+
+            totalStolen = Math.max(0, totalStolen);
+            if (totalStolen > 0) {
+                attacker.addEffect(EFFECTS.COMBO, totalStolen);
+                window.spawnDamageText(`КОМБО (+${totalStolen})`, attacker.x, attacker.y - 20, "#4affab");
+                manager.log(`[ЭГОИЗМ] ${attacker.name} поглотил заряды роя (+${totalStolen})!`);
+            }
+        }
+
+        if (skill.id === 'vitrailChargeEnhanced') {
+            let oldPos = attacker.posIdx;
+            let newPos = Math.max(1, oldPos - 3); 
+            
+            let passedAllies = manager.units.filter(u => u.side === attacker.side && !u.isDead && u !== attacker && u.posIdx >= newPos && u.posIdx < oldPos);
+            passedAllies.forEach(a => {
+                if (a.maxCombo > 0) { 
+                    a.addEffect(EFFECTS.COMBO, 1);
+                    window.spawnDamageText(`КОМБО (+1)`, a.x, a.y - 20, "#4affab");
+                }
+            });
+            if (passedAllies.some(a => a.maxCombo > 0)) {
+                manager.log(`[ЦЕПНАЯ РЕАКЦИЯ] Искры от тарана заряжают союзников!`);
+            }
         }
     },
 

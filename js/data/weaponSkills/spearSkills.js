@@ -14,6 +14,7 @@ export const DEFAULT_SPEAR_SKILL = {
     comboChanges: null,
     uniqueCondition: false,
     uniqueConditionReward: null,
+    staminaCost: 6,
 };
 
 export const SPEAR_SKILLS = {

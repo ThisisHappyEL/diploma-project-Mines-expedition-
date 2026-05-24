@@ -14,6 +14,7 @@ export const DEFAULT_HAMMER_SKILL = {
     comboChanges: null,
     uniqueCondition: false,
     uniqueConditionReward: null,
+    staminaCost: 6,
 };
 
 export const HAMMER_SKILLS = {

@@ -14,6 +14,7 @@ export const DEFAULT_CROSSBOW_SKILL = {
     comboChanges: null,
     uniqueCondition: false,
     uniqueConditionReward: null,
+    staminaCost: 6,
 };
 
 export const CROSSBOW_SKILLS = {

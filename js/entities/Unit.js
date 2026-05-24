@@ -11,6 +11,7 @@ export class Unit {
         this.maxStamina = Number(config.maxStamina) || Number(config.stamina) || 100;
         this.stamina = Number(config.stamina) || this.maxStamina;
         this.baseCombat = Number(config.combat) || 10; 
+        this.maxCombo = config.maxCombo || 0;
 
         this.x = this.side === 'player' ? -100 : 1100; 
         this.y = 700;
@@ -25,6 +26,8 @@ export class Unit {
         this.effectHitboxes = [];
         this.queueYOffset = 0; 
         this.isEnvironment = config.isEnvironment || false;
+        this.lore = config.lore || "Враждебная сущность недр.";
+        this.tactics = config.tactics || "Данные о тактике отсутствуют.";
         this.sprite = null;
         this.spriteLoaded = false
         if (config.spriteUrl) {
@@ -123,10 +126,27 @@ export class Unit {
         if (effectConfig.id === 'dot') {
             let ex = this.getEffect('dot');
             if (ex) {
-                ex.duration = Math.max(ex.duration, customParams.duration);
-                if (customParams.damagePerTurn > ex.damagePerTurn) ex.damagePerTurn = customParams.damagePerTurn;
+                let newDmg = customParams.damagePerTurn || 2;
+                let newDur = customParams.duration || effectConfig.duration || 3;
+                
+                if (newDmg <= ex.damagePerTurn) {
+                    ex.damagePerTurn += 1;
+                } else {
+                    ex.damagePerTurn = newDmg;
+                }
+
+                if (newDur <= ex.duration) {
+                    ex.duration += 1;
+                } else {
+                    ex.duration = newDur;
+                }
             } else {
-                this.activeEffects.push({ base: effectConfig, count: 1, duration: customParams.duration || 3, damagePerTurn: customParams.damagePerTurn || 2 });
+                this.activeEffects.push({ 
+                    base: effectConfig, 
+                    count: 1, 
+                    duration: customParams.duration || 3, 
+                    damagePerTurn: customParams.damagePerTurn || 2 
+                });
             }
             return;
         }
@@ -140,7 +160,7 @@ export class Unit {
     }
 
     tickEffectsByTrigger(triggerType) {
-        const manualTokens = ['block', 'parry', 'dodge', 'aGapingWound', 'ammo', 'noOneStepFurther', 'morePowder'];
+        const manualTokens = ['block', 'parry', 'dodge', 'aGapingWound', 'ammo', 'noOneStepFurther', 'morePowder', 'combo'];
 
         for (let i = this.activeEffects.length - 1; i >= 0; i--) {
             let e = this.activeEffects[i];
@@ -152,7 +172,7 @@ export class Unit {
                     e.count -= 1;
                 }
             } 
-            else if (triggerType === 'turnEnd' && e.duration !== undefined && e.base.id !== 'stun') {
+            else if (triggerType === 'turnEnd' && e.duration !== undefined && e.base.id !== 'stun' && e.base.id !== 'dot') {
                 e.duration -= 1;
             }
             
@@ -163,11 +183,12 @@ export class Unit {
     }
 
     takeDamage(amt) {
+        if (this.isEnvironment) return;
         this.hp = Math.max(0, this.hp - amt);
         this.offsetX = this.side === 'player' ? -20 : 20;
         if (this.hp <= 0) {
             this.isDead = true;
-            this.effectHitboxes = [];
+            this.effectHitboxes = []; 
         }
     }
 
@@ -253,12 +274,13 @@ export class Unit {
         ctx.restore(); 
     }
 
-    drawUI(ctx, predictedDamage = 0) {
+    drawUI(ctx, predictedDamage = 0, predictedStamina = 0) {
         if (this.isDead) return;
         const drawX = this.x + this.offsetX;
         let centerX = drawX + this.width / 2;
-        const drawY = this.y - this.height;
+        
         this.effectHitboxes = []; 
+        let effectYOffset = 25;
 
         if (!this.isEnvironment) {
             let hpPercent = this.maxHp > 0 ? (this.hp / this.maxHp) : 0;
@@ -279,17 +301,49 @@ export class Unit {
                     ctx.fillRect(barX + currentHpWidth - dmgWidth, hpY, dmgWidth, 6); 
                 }
             }
+
+            if (this.side === 'player') {
+                let stPercent = this.maxStamina > 0 ? (this.stamina / this.maxStamina) : 0;
+                let stY = hpY + 8;
+                
+                ctx.fillStyle = '#333'; ctx.fillRect(barX, stY, barW, 4); 
+                ctx.fillStyle = '#66ff88';
+                let currentStWidth = barW * stPercent;
+                ctx.fillRect(barX, stY, currentStWidth, 4);
+
+                if (predictedStamina !== 0) {
+                    if (predictedStamina > 0) {
+                        let costPercent = Math.min(this.stamina, predictedStamina) / this.maxStamina;
+                        let costWidth = barW * costPercent;
+                        if (Math.floor(Date.now() / 400) % 2 === 0) {
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; 
+                            ctx.fillRect(barX + currentStWidth - costWidth, stY, costWidth, 4);
+                        }
+                    } else {
+                        let gain = Math.abs(predictedStamina);
+                        let gainPercent = Math.min(this.maxStamina - this.stamina, gain) / this.maxStamina;
+                        let gainWidth = barW * gainPercent;
+                        if (Math.floor(Date.now() / 400) % 2 === 0) {
+                            ctx.fillStyle = 'rgba(102, 255, 136, 0.5)'; 
+                            ctx.fillRect(barX + currentStWidth, stY, gainWidth, 4);
+                        }
+                    }
+                }
+                effectYOffset = 33;
+            }
         }
 
         if (this.activeEffects.length > 0) {
             let totalEffWidth = this.activeEffects.length * 28;
             let effectX = centerX - (totalEffWidth / 2) + 14; 
-            let effectY = drawY - 15; 
+            
+            let effectY = this.y + effectYOffset; 
             
             this.activeEffects.forEach(e => {
                 ctx.fillStyle = '#fff'; ctx.font = '20px Arial';
-                ctx.fillText(e.base.icon, effectX - 10, effectY); 
-                this.effectHitboxes.push({ x: effectX - 10, y: effectY - 20, width: 25, height: 25, data: e });
+                ctx.fillText(e.base.icon, effectX - 10, effectY + 18); 
+                
+                this.effectHitboxes.push({ x: effectX - 10, y: effectY, width: 25, height: 25, data: e });
                 effectX += 28;
             });
         }
@@ -305,7 +359,18 @@ export class Unit {
                     <div style="font-size:16px; color:#ffbf00;">⚔️ Бой: ${this.combatStat}</div>
                     <div style="font-size:16px; color:#ff6666; font-weight:bold;">❤️ HP: ${Math.floor(this.hp)}/${this.maxHp}</div>
                     <div class="tt-divider"></div>
-                    <div style="font-size: 11px; color: #888;">Враждебная сущность недр.</div>
+                    <div style="font-size: 11px; color: #888; text-align: justify; line-height: 1.3;">${this.lore}</div>
+                </div>
+            </div>`;
+    }
+
+    getTacticsHTML() {
+        return `
+            <div style="position:relative; height:100%; display:flex; flex-direction:column; justify-content:flex-start; padding-top:10px;">
+                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:48px; font-weight:900; color:rgba(255,191,0,0.03); white-space:nowrap; pointer-events:none; z-index:0; letter-spacing: 8px;">АНАЛИЗ</div>
+                <div style="position:relative; z-index:1;">
+                    <h4 style="color:#ffbf00; margin:0 0 10px 0; text-transform:uppercase;">Тактика</h4>
+                    <div style="color:#aaa; font-size:12px; line-height:1.4; text-align:justify;">${this.tactics}</div>
                 </div>
             </div>`;
     }
@@ -315,8 +380,8 @@ export class Unit {
         let drawX = this.x + this.offsetX;
         let centerX = drawX + this.width / 2;
         
-        let hitboxWidth = 100;
-        let hitboxHeight = 160;
+        let hitboxWidth = this.isEnvironment ? 320 : 100;
+        let hitboxHeight = this.isEnvironment ? 260 : 160;
         
         let left = centerX - (hitboxWidth / 2);
         let right = centerX + (hitboxWidth / 2);

@@ -16,6 +16,7 @@ export const EFFECTS = {
     COMBO: { id: 'combo', name: "Комбо", type: 'buff', icon: '✨', tickOn: 'skillUsed', duration: 4, description: "Нужен для улучшения некоторых навыков" },
     PROTECTION: { id: 'protection', name: "Защита", type: 'buff', icon: '🧙‍♂️', tickOn: 'turnEnd', duration: 2 },
     UNDERPROTECTION: { id: 'underProtection', name: "Под защитой", type: 'buff', icon: '👨‍👦', tickOn: 'turnEnd', duration: 2 },
+    ARMOR: { id: 'armor', name: "Броня", type: 'buff', icon: '🛡️', tickOn: 'none', duration: 99, description: "Плоское снижение получаемого урона на количество зарядов. Спадает на 1 ед. после каждого пробивающего (превышающего броню) удара." },
     MOREGUNPOWDER: { id: 'moreGunpowder', name: "Больше пороха!", type: 'buff', icon: '💣', tickOn: 'hitGiven', duration: 4 },
     NOONESTEPFURTHER: { id: 'noOneStepFurther', name: "Ни шагу дальше!", type: 'buff', icon: '✋', tickOn: 'turnEnd', duration: 4 },
     BONUSDAMAGE: { id: 'bonusDamage', name: "Бонусный урон", type: 'buff', icon: '🗡', tickOn: 'hitGiven', duration: 4 },
@@ -26,6 +27,7 @@ export const EFFECTS = {
     FEAR: { id: 'fear', name: "Испуг", type: 'debuff', icon: '😱', tickOn: 'turnEnd', duration: 1 },
     INSTABILITY: { id: 'instability', name: "Неустойчивость", type: 'debuff', icon: '💃', tickOn: 'hitReceived', duration: 4, description: "Атака по цели провоцирует случайное смещение в одну из сторон" },
     INWEB: { id: 'inWeb', name: "В паутине", type: 'debuff', icon: '🕸', tickOn: 'manual', duration: 1 },
+    ELECTROWEB: { id: 'electroWeb', name: "Электро-паутина", type: 'debuff', icon: '⚡🕸', tickOn: 'none', duration: 99, description: "Наносит урон и заставляет пропустить ход. Спадает, если атаковать Пьезокристалл." },
 
     IGNORARMOR: { id: 'ignorArmor', name: "Снятие брони", type: 'debuff', icon: '', tickOn: '', duration: 1},
     IGNORDODGE: { id: 'ignorDodge', name: "Снятие уклонения", type: 'debuff', icon: '', tickOn: '', duration: 1},
@@ -38,4 +40,8 @@ export const EFFECTS = {
     RAPIDFIRE: { id: 'rapidFire', name: 'Скорострельность', type: 'buff', icon: '🎯', tickOn: 'turnEnd', duration: 1, description: 'Наносит удар по случайном противнику после каждого хода союзника'},
     AMMO: { id: 'ammo', name: "Боезапас", type: 'buff', icon: '🏹', tickOn: 'manual', duration: 99, description: 'Необходим для применения большинства навыков арбалетов и аркебуз'},
     MOREPOWDER: { id: 'morePowder', name: "Больше пороха!", type: 'buff', icon: '💥', tickOn: 'manual', duration: 99, description: "Следующий выстрел наложит Оглушение на цели" },
+
+    MITES: { id: 'mites', name: "Кремниевые клещи", type: 'buff', icon: '🐞', tickOn: 'none', duration: 99, description: "Питают врагов. Больше клещей = лучше награда после боя." },
+    SWARM: { id: 'swarm', name: "Рой", type: 'buff', icon: '🐝', tickOn: 'none', duration: 99, description: "Количество особей. Каждая особь дает +1 к урону, но увеличивает получаемый урон на 1. Избыточный урон по особи не переносится на остальных." 
+    },
 };

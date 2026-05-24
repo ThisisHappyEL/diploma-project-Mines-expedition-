@@ -15,6 +15,7 @@ export const DEFAULT_SWORD_SKILL = {
     comboChanges: null,
     uniqueCondition: false,
     uniqueConditionReward: null,
+    staminaCost: 6,
 };
 
 export const SWORD_SKILLS = {

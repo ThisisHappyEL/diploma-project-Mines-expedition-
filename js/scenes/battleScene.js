@@ -6,6 +6,7 @@ import { GLASS_FOREST_ENEMIES, GLASS_FOREST_ENCOUNTERS } from '../data/battleDat
 import { GameState } from '../core/GameState.js';
 import { SceneManager } from '../core/SceneManager.js';
 import { BattleUIHelper } from '../managers/BattleUIHelper.js';
+import { EFFECTS } from '../data/battleData/effects.js';
 
 export const BattleScene = {
     battleManager: null,
@@ -15,6 +16,14 @@ export const BattleScene = {
     mouseY: 0,
     hoverQueueUnit: null,
     hoveredObject: null, 
+
+    // Кеш для оптимизации
+    lastHoverTarget: null,
+    lastSkillId: null,
+    lastHoveredObjRef: null,
+    cachedExpectedDmg: 0,
+    cachedAoeTargets: [],
+    isHoveringValidTarget: false,
 
     init() {
         console.log("Бой начался!");
@@ -44,6 +53,9 @@ export const BattleScene = {
         document.getElementById('b-log-btn').onclick = () => document.getElementById('b-log-container').classList.toggle('hidden');
         this.gameUnits = []; this.damageTexts = []; this.hoveredObject = null; this.hoverQueueUnit = null;
 
+        // Сброс кеша
+        this.lastHoverTarget = null; this.lastSkillId = null; this.lastHoveredObjRef = null;
+
         this.bgImage = new Image();
         this.bgLoaded = false;
         let bgRand = Math.floor(Math.random() * 6);
@@ -65,7 +77,7 @@ export const BattleScene = {
             return data.spriteUrl; 
         };
 
-        const encounter = GLASS_FOREST_ENCOUNTERS.demo_1;
+        const encounter = GLASS_FOREST_ENCOUNTERS.hard_1;
         
         if (encounter.env) {
             let envData = GLASS_FOREST_ENEMIES[encounter.env];
@@ -75,7 +87,9 @@ export const BattleScene = {
                 combat: envData.combat, skills: envData.skills,
                 isEnvironment: true,
                 spriteUrl: getSpriteUrl(envData),
-                scale: envData.scale
+                scale: envData.scale,
+                lore: envData.lore,
+                tactics: envData.tactics,
             }));
         }
 
@@ -85,13 +99,26 @@ export const BattleScene = {
                 let pos = index + 1;
                 let letter = String.fromCharCode(65 + index); 
                 
-                this.gameUnits.push(new Unit({ 
-                    name: `${eData.name} ${letter}`, side: 'enemy', posIdx: pos, 
-                    hp: eData.hp, maxHp: eData.hp, 
-                    combat: eData.combat, skills: eData.skills,
+                const newEnemy = new Unit({ 
+                    name: `${eData.name} ${letter}`, 
+                    side: 'enemy', 
+                    posIdx: pos, 
+                    hp: eData.hp, 
+                    maxHp: eData.hp, 
+                    combat: eData.combat, 
+                    skills: eData.skills,
                     spriteUrl: getSpriteUrl(eData),
-                    scale: eData.scale
-                }));
+                    scale: eData.scale,
+                    maxCombo: eData.maxCombo,
+                    lore: eData.lore,
+                    tactics: eData.tactics,
+                });
+
+                if (enemyId === 'fritta') {
+                    newEnemy.addEffect(EFFECTS.SWARM, 3);
+                }
+
+                this.gameUnits.push(newEnemy);
             }
         });
 
@@ -107,11 +134,20 @@ export const BattleScene = {
         container.innerHTML = this.battleManager.turnQueue.map((unit, index) => {
             const sideClass = unit.side === 'player' ? 'player' : 'enemy';
             const activeClass = index === 0 ? 'active' : '';
-            const isHov = this.hoverQueueUnit === unit ? 'hover-highlight' : '';
-            return `<div class="queue-item ${sideClass} ${activeClass} ${isHov}" data-name="${unit.name}"
-                        onmouseenter="BattleScene.hoverQueueUnit = BattleScene.gameUnits.find(u => u.name === '${unit.name}')" 
-                        onmouseleave="BattleScene.hoverQueueUnit = null">
-                        ${unit.name.substring(0, 5)}
+            
+            let avatarContent = '';
+            if (unit.sprite && unit.sprite.src) {
+                avatarContent = `<div style="width:100%; height:100%; background-image: url('${unit.sprite.src}'); background-size: 200%; background-position: 20% 50%; background-repeat: no-repeat; border-radius: 4px;"></div>`;
+            } else {
+                let bgColor = unit.side === 'player' ? 'rgba(74, 144, 226, 0.2)' : 'rgba(226, 74, 74, 0.2)';
+                avatarContent = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; background:${bgColor}; border-radius: 4px;">${unit.name.charAt(0)}</div>`;
+            }
+
+            return `<div class="queue-item ${sideClass} ${activeClass}" data-name="${unit.name}"
+                        style="position:relative; overflow:hidden;"
+                        onmouseenter="BattleScene.hoverQueueUnit = BattleScene.gameUnits.find(u => u.name === '${unit.name}'); BattleScene.updateStateAndDOM();" 
+                        onmouseleave="BattleScene.hoverQueueUnit = null; BattleScene.updateStateAndDOM();">
+                        ${avatarContent}
                     </div>`;
         }).join('');
     },
@@ -128,18 +164,23 @@ export const BattleScene = {
         if (!activeUnit || activeUnit.side !== 'player' || manager.state === 'EXECUTING') {
             mBtn.style.opacity = '0.3'; mBtn.onclick = null; mBtn.onmouseenter = null; mBtn.onmouseleave = null;
             rBtn.style.opacity = '0.3'; rBtn.onclick = null; rBtn.onmouseenter = null; rBtn.onmouseleave = null;
+            this.updateStateAndDOM();
             return;
         }
 
-        mBtn.style.opacity = '1';
-        mBtn.onclick = () => manager.selectMoveAction();
-        mBtn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { name: "Движение", description: "Смена позиции с соседним союзником.", isMove: true } };
-        mBtn.onmouseleave = () => this.hoveredObject = null;
+        if (activeUnit.stamina < 3) {
+            mBtn.style.opacity = '0.3'; mBtn.onclick = null; mBtn.onmouseenter = null; mBtn.onmouseleave = null;
+        } else {
+            mBtn.style.opacity = '1';
+            mBtn.onclick = () => { manager.selectMoveAction(); this.updateStateAndDOM(); };
+            mBtn.onmouseenter = () => { this.hoveredObject = { type: 'skill', data: { name: "Движение", description: "Смена позиции с соседним союзником. (-3 Выносливости)", isMove: true } }; this.updateStateAndDOM(); };
+            mBtn.onmouseleave = () => { this.hoveredObject = null; this.updateStateAndDOM(); };
+        }
 
         rBtn.style.opacity = '1';
-        rBtn.onclick = () => manager.performRest();
-        rBtn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { name: "Отдых", description: "Пропуск хода для восстановления сил.", isRest: true } };
-        rBtn.onmouseleave = () => this.hoveredObject = null;
+        rBtn.onclick = () => { manager.performRest(); this.updateStateAndDOM(); };
+        rBtn.onmouseenter = () => { this.hoveredObject = { type: 'skill', data: { name: "Отдых", description: "Пропуск хода для восстановления сил (+15 Выносливости).", isRest: true } }; this.updateStateAndDOM(); };
+        rBtn.onmouseleave = () => { this.hoveredObject = null; this.updateStateAndDOM(); };
 
         const baseDmg = activeUnit.equipment?.rightHand?.baseDamage || 10;
         const effectiveBase = activeUnit.equipment?.leftHand === null ? Math.round(baseDmg * 1.3) : baseDmg;
@@ -147,30 +188,74 @@ export const BattleScene = {
         skills.forEach(skill => {
             let btn = document.createElement('button');
             btn.className = 'skill-btn';
-            if (manager.selectedSkill?.id === skill.id) btn.classList.add('active');
-            btn.innerText = skill.name; 
+            
+            let isActive = manager.selectedSkill?.id === skill.id;
+            if (isActive) btn.classList.add('active');
+            
+            if (!this.iconCache) this.iconCache = {}; 
+            
+            if (this.iconCache[skill.id] === true) {
+                btn.innerHTML = `<img src="assets/img/weaponSkillsIcons/${skill.id}.png" style="width:100%; height:100%; object-fit:cover; pointer-events:none; display:block;" />`;
+                btn.style.padding = '0'; 
+                btn.style.overflow = 'visible';
+                
+                btn.style.backgroundColor = '#000'; 
+                
+                if (isActive) {
+                    btn.style.height = '140px';
+                    btn.style.transform = 'translateY(-37px)';
+                    btn.style.zIndex = '100'; 
+                    btn.style.boxShadow = '0 15px 25px rgba(0,0,0,0.8), 0 0 15px #ffbf00';
+                    btn.style.borderColor = '#ffbf00';
+                } else {
+                    btn.style.height = '65px';
+                    btn.style.transform = 'translateY(0)';
+                    btn.style.zIndex = '1';
+                    btn.style.borderColor = '#444';
+                }
+
+            } else {
+                btn.innerText = skill.name;
+                
+                if (this.iconCache[skill.id] === undefined) {
+                    this.iconCache[skill.id] = 'loading'; 
+                    
+                    let img = new Image();
+                    img.onload = () => { 
+                        this.iconCache[skill.id] = true; 
+                        this.updateUI(activeUnit, skills, manager); 
+                    };
+                    img.onerror = () => { 
+                        this.iconCache[skill.id] = false; 
+                    };
+                    img.src = `assets/img/weaponSkillsIcons/${skill.id}.png`; 
+                }
+            }
             
             let isPosValid = skill.validPos?.includes(activeUnit.posIdx);
             let hasTarget = false;
             
-            if (skill.targetSelf) {
+            if (skill.targetSelf || skill.targetAny) {
                 hasTarget = true; 
-            } else if (skill.targetAny) {
-                hasTarget = true;
             } else {
                 const targetSide = skill.targetAlly ? activeUnit.side : (activeUnit.side === 'player' ? 'enemy' : 'player');
                 hasTarget = this.gameUnits.some(u => !u.isDead && u.side === targetSide && skill.targetPos?.includes(u.posIdx));
+                if (!skill.targetAlly && skill.damageCoef > 0) {
+                    if (this.gameUnits.find(u => u.isEnvironment)) hasTarget = true;
+                }
             }
 
             let needsAmmo = ['aimedShot', 'duck', 'snapShot', 'broadheadBolt', 'heavyBolt', 'fireBolt', 'vulnerableSpot', 'flareBolt',
                              'frontRearSights', 'buckshot', 'shotIntoAir', 'piercedArtery', 'piercingShot', 'stayAway'].includes(skill.id);
             let hasAmmo = activeUnit.hasEffect('ammo');
             
-            let isVulnerableSpotValid = true;
-            if (skill.id === 'vulnerableSpot') isVulnerableSpotValid = activeUnit.hasEffect('combo') || this.gameUnits.some(u => u.side !== activeUnit.side && !u.isDead && u.hasEffect('mark'));
-
-            let isRapidFireValid = true;
-            if (skill.id === 'rapidFire') isRapidFireValid = activeUnit.hasEffect('combo');
+            let isVulnerableSpotValid = skill.id !== 'vulnerableSpot' || activeUnit.hasEffect('combo') || this.gameUnits.some(u => u.side !== activeUnit.side && !u.isDead && u.hasEffect('mark'));
+            let isRapidFireValid = skill.id !== 'rapidFire' || activeUnit.hasEffect('combo');
+            let sCost = skill.staminaCost !== undefined ? skill.staminaCost : 6;
+            
+            if (!isPosValid || !hasTarget || (needsAmmo && !hasAmmo) || !isVulnerableSpotValid || !isRapidFireValid || activeUnit.stamina < sCost) {
+                btn.disabled = true;
+            }
 
             if (!isPosValid || !hasTarget || (needsAmmo && !hasAmmo) || !isVulnerableSpotValid || !isRapidFireValid) {
                 btn.disabled = true;
@@ -178,36 +263,50 @@ export const BattleScene = {
 
             if (skill.id === 'allInThisStrike') {
                 const controlEffects = ['stun', 'daze', 'fear', 'inWeb', 'instability'];
-                if (activeUnit.activeEffects.some(e => controlEffects.includes(e.base.id))) isPosValid = false; 
+                if (activeUnit.activeEffects.some(e => controlEffects.includes(e.base.id))) btn.disabled = true; 
             }
-
-            if (!isPosValid || !hasTarget) btn.disabled = true;
             
             let finalDmg = Math.round(effectiveBase * (skill.damageCoef || 0));
             
-            btn.onclick = () => manager.selectSkill(skill);
-            btn.onmouseenter = () => this.hoveredObject = { type: 'skill', data: { ...skill, finalDmg } };
-            btn.onmouseleave = () => this.hoveredObject = null;
+            btn.onclick = () => { manager.selectSkill(skill); this.updateStateAndDOM(); };
+            btn.onmouseenter = () => { this.hoveredObject = { type: 'skill', data: { ...skill, finalDmg } }; this.updateStateAndDOM(); };
+            btn.onmouseleave = () => { this.hoveredObject = null; this.updateStateAndDOM(); };
             
             skillsRow.appendChild(btn);
         });
+        
+        this.updateStateAndDOM();
     },
 
     setupInput() {
         const canvas = SceneManager.canvas;
         
+        canvas.oncontextmenu = (e) => {
+            e.preventDefault(); // Блокировка стандартного ПКМ браузера
+            this.cancelCurrentAction(); // сброс выбранного навыка
+        };
+
         canvas.onmousemove = (e) => {
             const rect = canvas.getBoundingClientRect();
             this.mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
             this.mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+            this.updateStateAndDOM();
         };
-        canvas.onmousedown = () => {
+        
+        canvas.onmousedown = (e) => {
+            if (e.button !== 0) return; 
+
             if (this.hoverQueueUnit) { this.battleManager.handleCanvasClick(this.hoverQueueUnit); return; }
             this.gameUnits.forEach(u => { if (u.isClicked(this.mouseX, this.mouseY)) this.battleManager.handleCanvasClick(u); });
         };
 
         this.keyDownHandler = (e) => {
             if (e.key === ' ' || e.code === 'Space') e.preventDefault();
+
+            if (e.key === 'Escape') {
+                this.cancelCurrentAction();
+                return;
+            }
 
             let active = this.battleManager ? this.battleManager.getActiveUnit() : null;
             if (!active || active.side !== 'player' || this.battleManager.state === 'EXECUTING') return;
@@ -216,7 +315,7 @@ export const BattleScene = {
             const rBtn = document.getElementById('b-btn-rest');
             const skillsRow = document.getElementById('b-skills-row');
 
-            if (e.key === 'Shift') {
+            if (e.key === 'p') { 
                 if (mBtn && mBtn.style.opacity === '1') mBtn.click();
             } 
             else if (e.key === ' ' || e.code === 'Space') {
@@ -233,66 +332,84 @@ export const BattleScene = {
         window.addEventListener('keydown', this.keyDownHandler);
     },
 
-    draw(ctx, canvas) {
-        if (this.bgLoaded) {
-            ctx.drawImage(this.bgImage, 0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "rgba(12, 10, 8, 0.4)"; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            let floorGradient = ctx.createLinearGradient(0, 680, 0, canvas.height);
-            floorGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-            floorGradient.addColorStop(0.1, "rgba(10, 8, 6, 0.7)");
-            floorGradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
+    cancelCurrentAction() {
+        if (!this.battleManager || this.battleManager.state === 'EXECUTING') return;
+        
+        let active = this.battleManager.getActiveUnit();
+        if (active && active.side === 'player') {
+            this.battleManager.selectedSkill = null;
+            this.battleManager.state = 'IDLE'; // возвращение режима ожидания
             
-            ctx.fillStyle = floorGradient;
-            ctx.fillRect(0, 680, canvas.width, canvas.height - 680);
-        } else {
-            ctx.fillStyle = "#0c0a08"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            this.updateUI(active, active.getAvailableSkills(), this.battleManager);
         }
+    },
 
+    updateStateAndDOM() {
+        if (!this.battleManager) return;
+        
+
+        let active = this.battleManager.getActiveUnit();
+        let s = active && this.battleManager.state === 'SELECT_TARGET' ? this.battleManager.selectedSkill : null;
+        
         let hFieldU = null;
         this.gameUnits.forEach(u => { if (u.isClicked(this.mouseX, this.mouseY)) hFieldU = u; });
+        const target = hFieldU || this.hoverQueueUnit;
+
+        if (this.lastHoverTarget === target && this.lastSkillId === (s ? s.id : null) && this.lastHoveredObjRef === this.hoveredObject) {
+            return;
+        }
+        
+        // обновление кеша
+        this.lastHoverTarget = target;
+        this.lastSkillId = s ? s.id : null;
+        this.lastHoveredObjRef = this.hoveredObject;
+        
+        this.cachedExpectedDmg = 0;
+        this.cachedExpectedStamina = 0;
+        this.cachedAoeTargets = [];
+        this.isHoveringValidTarget = false;
+        
+        let predictionHTML = null;
+
+        if (active && active.side === 'player') {
+            if (this.hoveredObject?.type === 'skill') {
+                if (this.hoveredObject.data.isMove) this.cachedExpectedStamina = 3;
+                else if (this.hoveredObject.data.isRest) this.cachedExpectedStamina = -15; // минус значит восстановление
+                else this.cachedExpectedStamina = this.hoveredObject.data.staminaCost !== undefined ? this.hoveredObject.data.staminaCost : 6;
+            } else if (s) {
+                this.cachedExpectedStamina = s.staminaCost !== undefined ? s.staminaCost : 6;
+            }
+        }
 
         document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('hover-highlight'));
-        const target = hFieldU || this.hoverQueueUnit;
         if (target) {
             const el = document.querySelector(`.queue-item[data-name="${target.name}"]`);
             if (el) el.classList.add('hover-highlight');
         }
 
-        let active = this.battleManager ? this.battleManager.getActiveUnit() : null;
+        let currentTargetPos = s ? (s.targetPos || []) : [];
+        if (s && s.id === 'buckshot' && target) {
+            if (target.posIdx === 1) currentTargetPos = [1, 2];
+            else if (target.posIdx === 3) currentTargetPos = [2, 3];
+            else currentTargetPos = [1, 2];
+        }
 
-        let predictionHTML = null;
-        let globalExpectedDmg = 0;
-        let isHoveringAoE = false;
-        let hoveredAoESide = null;
+        if (s && target && !target.isDead) {
+            if (s.targetSelf && target === active) this.isHoveringValidTarget = true;
+            else if (s.targetAny && currentTargetPos.includes(target.posIdx)) this.isHoveringValidTarget = true;
+            else if (s.targetAlly && target.side === active.side && currentTargetPos.includes(target.posIdx)) this.isHoveringValidTarget = true;
+            else if (!s.targetAlly && target.side !== active.side && currentTargetPos.includes(target.posIdx)) this.isHoveringValidTarget = true;
+            else if (!s.targetAlly && target.isEnvironment && s.damageCoef > 0) this.isHoveringValidTarget = true; 
 
-        if (active && this.battleManager.state === 'SELECT_TARGET' && this.battleManager.selectedSkill && target && !target.isDead) {
-            let s = this.battleManager.selectedSkill;
-            let isP = false;
-
-            if (s.id === 'buckshot' && target) {
-                        if (target.posIdx === 1) s.targetPos = [1, 2];
-                        else if (target.posIdx === 3) s.targetPos = [2, 3];
-                        else s.targetPos = [1, 2];
-                    }
-            
-            if (s.targetSelf) { if (target === active) isP = true; }
-            else if (s.targetAny) { if (s.targetPos?.includes(target.posIdx)) isP = true; }
-            else if (s.targetAlly) { if (target.side === active.side && s.targetPos?.includes(target.posIdx)) isP = true; }
-            else { if (target.side !== active.side && s.targetPos?.includes(target.posIdx)) isP = true; }
-
-            if (isP) {
-                let pred = this.battleManager.getPrediction(active, target, s);
-                globalExpectedDmg = pred.expectedDamage; 
+            if (this.isHoveringValidTarget) {
+                let tempSkill = { ...s, targetPos: currentTargetPos }; 
+                let pred = this.battleManager.getPrediction(active, target, tempSkill);
+                this.cachedExpectedDmg = pred.expectedDamage;
 
                 let top3 = pred.list.slice(0, 3);
                 let listHTML = top3.map(p => {
                     let effsStr = pred.simSkill.effect || '';
-                    
-                    if (pred.simSkill.id === 'flareBolt') {
-                        effsStr = (target.side === active.side) ? 'taunt-1' : 'vulnerable-1, mark-1';
-                    }
+                    if (pred.simSkill.id === 'flareBolt') effsStr = (target.side === active.side) ? 'ally taunt-1' : 'vulnerable-1, mark-1'; 
                     if (pred.simSkill.id === 'duck') effsStr = ''; 
                     if (pred.simSkill.id === 'invigoratingRicochet') effsStr = 'weakness-1'; 
 
@@ -301,7 +418,6 @@ export const BattleScene = {
                         let cleanEffs = effsStr.split(',')
                             .filter(eff => !eff.trim().toLowerCase().startsWith('self ') && !eff.trim().toLowerCase().startsWith('ally '))
                             .join(',');
-                        
                         translated = BattleUIHelper.translateEffect(cleanEffs, p.isL, p.isU, p.isC, target.hasEffect('susceptibility'));
                     }
 
@@ -316,6 +432,7 @@ export const BattleScene = {
 
                     let effsHTML = translated.length > 0 ? translated.join(', ') : '<span style="color:#666">Нет эффектов</span>';
                     let hitsStr = p.hits > 1 ? `<span style="font-size:10px; color:#888; margin-left:4px;">(${p.hits}x${p.singleDmg})</span>` : '';
+                    let formulaRow = p.formula ? `<div style="text-align:right; font-size:9px; color:#888; margin-top:2px;">Расчет: ${p.formula}</div>` : '';
 
                     return `
                     <div style="margin-bottom:4px; background: rgba(255,255,255,0.08); padding: 5px 8px; border-radius: 4px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);">
@@ -323,11 +440,11 @@ export const BattleScene = {
                             <span style="color:${p.color}; min-width: 85px; font-weight:bold;">${p.type} <span style="font-size:10px; color:#aaa">(${p.prob}%)</span></span>
                             <span style="flex:1; color:#ccc; font-size:11px; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align:center;">${effsHTML}</span>
                             <span style="text-align:right; min-width: 80px;">
-                                ${p.formula || ''}
                                 <span style="color:#ff4444; font-weight:bold; font-size: 13px;">-${p.totalDmg} HP</span>
                                 ${hitsStr}
                             </span>
                         </div>
+                        ${formulaRow}
                     </div>`;
                 }).join('');
 
@@ -335,88 +452,20 @@ export const BattleScene = {
                     <div style="position:relative; height:100%; display:flex; flex-direction:column; justify-content:center; padding: 0 10px;">
                         <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:42px; font-weight:900; color:rgba(255,191,0,0.05); white-space:nowrap; pointer-events:none; z-index:0; letter-spacing: 8px;">ПРОГНОЗ</div>
                         <div style="position:relative; z-index:1;">${listHTML}</div>
-                    </div>
-                `;
-                
-                if (s.isAoE) {
-                    isHoveringAoE = true;
-                    hoveredAoESide = target.side;
-                }
-            }
-        }
+                    </div>`;
 
-        if (isHoveringAoE && active && this.battleManager.selectedSkill?.isAoE) {
-            let s = this.battleManager.selectedSkill;
-            let aoeTargets = this.gameUnits.filter(u => u.side === hoveredAoESide && !u.isDead && s.targetPos.includes(u.posIdx));
-            if (aoeTargets.length > 1) {
-                aoeTargets.sort((a, b) => a.x - b.x);
-                let first = aoeTargets[0]; let last = aoeTargets[aoeTargets.length - 1];
-                let centerY = first.y + first.height / 2;
-                ctx.save();
-                ctx.shadowBlur = 20; ctx.shadowColor = '#ff0000';
-                ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 6;
-                ctx.beginPath(); ctx.moveTo(first.x + first.width/2, centerY); ctx.lineTo(last.x + last.width/2, centerY); ctx.stroke();
-                ctx.lineWidth = 4; const capH = 15;
-                ctx.beginPath(); ctx.moveTo(first.x + 5, centerY - capH); ctx.lineTo(first.x - 5, centerY); ctx.lineTo(first.x + 5, centerY + capH); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(last.x + last.width - 5, centerY - capH); ctx.lineTo(last.x + last.width + 5, centerY); ctx.lineTo(last.x + last.width - 5, centerY + capH); ctx.stroke();
-                ctx.restore();
+                if (s.isAoE) {
+                    let targetSide = target.isEnvironment ? (active.side === 'player' ? 'enemy' : 'player') : target.side;
+                    this.cachedAoeTargets = this.gameUnits.filter(u => u.side === targetSide && !u.isDead && !u.isEnvironment && currentTargetPos.includes(u.posIdx));
+                }
             }
         }
 
         const leftBox = document.getElementById('b-info-left');
         const rightBox = document.getElementById('b-info-right');
-
-        let unitsToDraw = [...this.gameUnits].sort((a, b) => {
-            if (a.isEnvironment && !b.isEnvironment) return -1;
-            if (!a.isEnvironment && b.isEnvironment) return 1;
-            return b.posIdx - a.posIdx; // По убыванию позиции (4 -> 3 -> 2 -> 1)
-        });
-
-        if (this.battleManager) {
-            let unitsToDraw = [...this.gameUnits].sort((a, b) => {
-                if (a.isEnvironment && !b.isEnvironment) return -1;
-                if (!a.isEnvironment && b.isEnvironment) return 1;
-                return b.posIdx - a.posIdx; 
-            });
-
-            unitsToDraw.forEach(unit => {
-                unit.update();
-                let isP = false; 
-
-                if (active && this.battleManager.state === 'SELECT_TARGET' && this.battleManager.selectedSkill) {
-                    let s = this.battleManager.selectedSkill;
-                    if (s.targetSelf) { if (unit === active) isP = true; }
-                    else if (s.targetAny) { if (s.targetPos?.includes(unit.posIdx)) isP = true; }
-                    else if (s.targetAlly) { if (unit.side === active.side && s.targetPos?.includes(unit.posIdx)) isP = true; }
-                    else { if (unit.side !== active.side && s.targetPos?.includes(unit.posIdx)) isP = true; }
-                } else if (active && this.battleManager.state === 'SELECT_MOVE') {
-                    if (unit.side === active.side && unit !== active && Math.abs(unit.posIdx - active.posIdx) === 1) isP = true;
-                }
-
-                let isActuallyHovered = (unit === target);
-                if (isHoveringAoE && isP && unit.side === hoveredAoESide) isActuallyHovered = true;
-
-                unit.drawBody(ctx, active === unit, isP, isActuallyHovered);
-                
-                unit._tempExpectedDmg = 0;
-                if (predictionHTML && active && this.battleManager.selectedSkill) {
-                    if (this.battleManager.selectedSkill.isAoE && isHoveringAoE) {
-                        if (unit.side === hoveredAoESide && this.battleManager.selectedSkill.targetPos?.includes(unit.posIdx)) {
-                            unit._tempExpectedDmg = globalExpectedDmg;
-                        }
-                    } else if (unit === target && !this.battleManager.selectedSkill.isAoE) {
-                        unit._tempExpectedDmg = globalExpectedDmg;
-                    }
-                }
-            });
-
-            unitsToDraw.forEach(unit => {
-                unit.drawUI(ctx, unit._tempExpectedDmg || 0);
-            });
-        }
-
+        
         if (leftBox && rightBox) {
-            if (predictionHTML && target) {
+            if (predictionHTML && target && !target.isEnvironment) {
                 leftBox.innerHTML = predictionHTML;
                 rightBox.innerHTML = target.getTooltipHTML();
             } 
@@ -441,17 +490,97 @@ export const BattleScene = {
                 if (target.side === 'player') {
                     leftBox.innerHTML = target.getTooltipHTML();
                     rightBox.innerHTML = target.getEquipmentHTML();
+                } else if (target.isEnvironment) {
+                    leftBox.innerHTML = target.getTacticsHTML ? target.getTacticsHTML() : '';
+                    rightBox.innerHTML = target.getTooltipHTML();
                 } else {
-                    leftBox.innerHTML = `
-                        <div style="position:relative; height:100%; display:flex; flex-direction:column; justify-content:center;">
-                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:48px; font-weight:900; color:rgba(255,191,0,0.03); white-space:nowrap; pointer-events:none; z-index:0; letter-spacing: 8px;">АНАЛИЗ</div>
-                            <div style="position:relative; z-index:1; color:#555; text-align:center; font-weight:bold; letter-spacing:2px; font-size:14px;">ОЖИДАНИЕ ДЕЙСТВИЙ...</div>
-                        </div>`;
+                    leftBox.innerHTML = target.getTacticsHTML ? target.getTacticsHTML() : '';
                     rightBox.innerHTML = target.getTooltipHTML();
                 }
             } else {
                 leftBox.innerHTML = ''; rightBox.innerHTML = '';
             }
+        }
+    },
+
+    draw(ctx, canvas) {
+        if (this.bgLoaded) {
+            ctx.drawImage(this.bgImage, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(12, 10, 8, 0.4)"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let floorGradient = ctx.createLinearGradient(0, 680, 0, canvas.height);
+            floorGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+            floorGradient.addColorStop(0.1, "rgba(10, 8, 6, 0.7)");
+            floorGradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
+            
+            ctx.fillStyle = floorGradient;
+            ctx.fillRect(0, 680, canvas.width, canvas.height - 680);
+        } else {
+            ctx.fillStyle = "#0c0a08"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        if (this.cachedAoeTargets.length > 1) {
+            this.cachedAoeTargets.sort((a, b) => a.x - b.x);
+            let first = this.cachedAoeTargets[0]; let last = this.cachedAoeTargets[this.cachedAoeTargets.length - 1];
+            let centerY = first.y - (first.height / 2); 
+            ctx.save();
+            ctx.shadowBlur = 20; ctx.shadowColor = '#ff0000';
+            ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(first.x + first.width/2, centerY); ctx.lineTo(last.x + last.width/2, centerY); ctx.stroke();
+            ctx.lineWidth = 4; const capH = 15;
+            ctx.beginPath(); ctx.moveTo(first.x + 5, centerY - capH); ctx.lineTo(first.x - 5, centerY); ctx.lineTo(first.x + 5, centerY + capH); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(last.x + last.width - 5, centerY - capH); ctx.lineTo(last.x + last.width + 5, centerY); ctx.lineTo(last.x + last.width - 5, centerY + capH); ctx.stroke();
+            ctx.restore();
+        }
+
+        if (this.battleManager) {
+            let active = this.battleManager.getActiveUnit();
+            let s = active && this.battleManager.state === 'SELECT_TARGET' ? this.battleManager.selectedSkill : null;
+            let currentTargetPos = s ? (s.targetPos || []) : [];
+            if (s && s.id === 'buckshot' && this.lastHoverTarget) {
+                if (this.lastHoverTarget.posIdx === 1) currentTargetPos = [1, 2];
+                else if (this.lastHoverTarget.posIdx === 3) currentTargetPos = [2, 3];
+                else currentTargetPos = [1, 2];
+            }
+
+            let unitsToDraw = [...this.gameUnits].sort((a, b) => {
+                if (a.isEnvironment && !b.isEnvironment) return -1;
+                if (!a.isEnvironment && b.isEnvironment) return 1;
+                return b.posIdx - a.posIdx; 
+            });
+
+            unitsToDraw.forEach(unit => {
+                unit.update();
+                let isP = false; 
+                
+                if (s) {
+                    if (s.targetSelf) { if (unit === active) isP = true; }
+                    else if (s.targetAny) { if (currentTargetPos.includes(unit.posIdx)) isP = true; }
+                    else if (s.targetAlly) { if (unit.side === active.side && currentTargetPos.includes(unit.posIdx)) isP = true; }
+                    else { 
+                        if (unit.side !== active.side && currentTargetPos.includes(unit.posIdx)) isP = true; 
+                        if (unit.isEnvironment && s.damageCoef > 0) isP = true;
+                    }
+                } else if (active && this.battleManager.state === 'SELECT_MOVE') {
+                    if (unit.side === active.side && unit !== active && Math.abs(unit.posIdx - active.posIdx) === 1) isP = true;
+                }
+
+                let isActuallyHovered = false;
+                if (this.isHoveringValidTarget && this.cachedAoeTargets.length > 0) {
+                    if (this.cachedAoeTargets.includes(unit) || (this.lastHoverTarget?.isEnvironment && unit.isEnvironment)) isActuallyHovered = true;
+                } else {
+                    if (unit === this.lastHoverTarget) isActuallyHovered = true;
+                }
+
+                unit.drawBody(ctx, active === unit, isP, isActuallyHovered);
+                unit._tempExpectedDmg = (isActuallyHovered && this.isHoveringValidTarget) ? this.cachedExpectedDmg : 0;
+            });
+
+            unitsToDraw.forEach(unit => {
+                let stPred = (unit === active) ? this.cachedExpectedStamina : 0;
+                unit.drawUI(ctx, unit._tempExpectedDmg, stPred);
+            });
         }
 
         this.damageTexts = this.damageTexts.filter(t => t.life > 0);

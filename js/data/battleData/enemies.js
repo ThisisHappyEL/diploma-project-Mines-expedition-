@@ -6,85 +6,94 @@ export const GLASS_FOREST_ENEMIES = {
         spriteUrl: 'assets/img/enemies/piezo.png',
         spriteVariations: 9, 
         scale: 0.4,
-        skills: [] 
+        skills: [],
+        lore: "Огромная глыба кварца, накапливающего электричество, генерируемого тектоническими процессами.",
+        tactics: "База местной пищевой цепочки. Привлекает к себе кремниевых клещей, которых после поедают многолапы покрупнее.\nДабы не давать копить врагам заряд, можно сбивать с него клещей, но с другой стороны эти маленькие батарейки довольно ценные..."
     },
     fritta: {
         id: 'fritta', name: "Фритта",
-        hp: 4, combat: 2,
+        hp: 8, maxHp: 8, combat: 3, maxCombo: 0,
         spriteUrl: 'assets/img/enemies/fritta.png',
         spriteVariations: 12, 
         scale: 0.125,
-        skills: ['frittaAttack']
+        skills: ['frittaAttack'],
+        lore: "Рой мелких паучков, занимающихся сбором полезного для репродукции сырья.",
+        tactics: "Назойливые малыши, которые бездумно прыгают в атаку.\nИз-за их количества наносимый им и ими вред увеличен, но за удар больше одной особи разбить не получится."
     },
     glassSpider: {
         id: 'glassSpider', name: "Стеклянный паук",
-        hp: 14, combat: 3,
+        hp: 36, maxHp: 40, combat: 6, maxCombo: 2,
         spriteUrl: 'assets/img/enemies/glassSpider.png',
-        spriteVariations: 7, 
+        spriteVariations: 11, 
         scale: 0.175,
-        skills: ['glassMelee', 'glassCleave', 'glassRanged', 'glassWeb', 'glassBuffSelf', 'glassBuffAlly', 'glassCare']
+        skills: ['glassMelee', 'glassCleave', 'glassRanged', 'glassWeb', 'glassBuffSelf', 'glassBuffAlly', 'glassCare'],
+        lore: "«Рабочая лошадка». Проводит токопроводящую паутину от пьезокристаллов для подпитки своей матушки.",
+        tactics: "Универсальный рабочий, который в качестве приоритета подкармливает более сильных сородичей заряженными кремниевыми клещами с ближайшего пьезокристалла.\nПри отсутствии таковой возможности уплетает их сам и пытается укокошить нарушителей покоя с помощью своей токопроводящей паутины."
     },
     amalgamSpider: {
         id: 'amalgamSpider', name: "Паук-амальгама",
-        hp: 10, combat: 5,
+        hp: 36, maxHp: 26, combat: 9, maxCombo: 2,
         spriteUrl: 'assets/img/enemies/amalgam.png',
         spriteVariations: 12, 
         scale: 0.25,
-        skills: ['amalgamBleed', 'amalgamWound', 'amalgamDash', 'amalgamHeavyDash', 'amalgamBuff']
+        skills: ['amalgamBleed', 'amalgamWound', 'amalgamDash', 'amalgamHeavyDash', 'amalgamFeedSelf'],
+        lore: "Разведчик, наблюдатель и незаметный убийца. Сливается с окружающей местностью.",
+        tactics: "Бесшумный вытянутый ужас. Способен подкрасться и сделать стрижку зазевавшемуся шахтёру.\nПока по его структурам бегает ток, сливается с местностью, становясь неуловимым."
     },
     vitrailSpider: {
         id: 'vitrailSpider', name: "Паук-витраж",
-        hp: 28, combat: 8,
+        hp: 60, maxHp: 60, combat: 12, maxCombo: 4,
         spriteUrl: 'assets/img/enemies/vitrail.png',
         spriteVariations: 12, 
         scale: 0.25,
-        skills: ['vitrailCleave', 'vitrailQuake', 'vitrailCharge', 'vitrailHeavyCharge', 'vitrailBlock', 'vitrailSteal']
+        skills: ['vitrailMeleeBasic', 'vitrailMeleeEnhanced', 'vitrailChargeBasic', 'vitrailChargeEnhanced', 'vitrailRetreat', 'vitrailStealCombo'],
+        lore: "Стеклянный бегемот, по металлическим прожилкам которого пробегают молнии.",
+        tactics: "Неповоротливая махина, разрушающая строй врага и сминающая нарушителей покоя своей тушей.\nЗа счёт использования в конструкции дефицитных для биома цветных металлов куда лучше хранит в себе ток и способен генерировать его самостоятельно, делясь им с соседями, или забирая всё себе."
     },
     glassMother: {
         id: 'glassMother', name: "Мать стеклороя",
-        hp: 60, combat: 6,
+        hp: 120, maxHp: 120, combat: 15, isBoss: true, maxCombo: 8,
         isBoss: true,
         spriteUrl: 'assets/img/enemies/mother.png',
         spriteVariations: 11, 
         scale: 0.3, 
-        skills: ['motherMelee', 'motherRanged', 'motherSpawnFritta', 'motherSpawnGlass', 'motherSpawnAmalgam', 'motherSpawnVitrail', 'motherCharge']
+        skills: ['motherMelee', 'motherRanged', 'motherSurge', 'motherVoltage', 'motherSpawnFritta', 'motherSpawnGlass', 'motherSpawnAmalgam', 'motherSpawnVitrail'],
+        lore: "Живая стеклоплавильная печь, будучи потревоженной, производит новый выводок в невероятные темпы.",
+        tactics: "Родоначальница всего выводка кварцевых пауков.\nБудучи потревоженной в ускоренном темпе производит себе во вред новых особей, впрочем трудолюбивые фритты охотно закинут в неё оставшееся от их тушек сырьё обратно.\nКрайне опасна при накоплении избыточного тока."
     }
 };
 
-// СИСТЕМА ПРЕДУСТАНОВЛЕННЫХ ГРУПП
-// Позиции врагов заполняются справа налево: Индекс 0 = Позиция 1 (впереди), Индекс 3 = Позиция 4 (сзади)
-// env - элемент ландшафта (встанет на нулевую позицию между командами)
 export const GLASS_FOREST_ENCOUNTERS = {
-    // Легкие группы (Разведка)
     easy_1: {
         env: 'piezoCrystal',
-        units: ['fritta', 'fritta', 'fritta', 'fritta'] // Толпа мелочи
+        units: ['fritta', 'fritta', 'fritta', 'fritta']
     },
     easy_2: {
         env: null,
-        units: ['fritta', 'fritta', 'glassSpider', null] // 2 фритты спереди, паук сзади
+        units: ['fritta', 'fritta', 'glassSpider', null]
     },
     
-    // Средние группы (Бой)
     medium_1: {
         env: 'piezoCrystal',
         units: ['fritta', 'glassSpider', 'glassSpider', null]
     },
     medium_2: {
         env: null,
-        units: ['glassSpider', 'glassSpider', 'amalgamSpider', null] // Амальгама сзади
+        units: ['glassSpider', 'glassSpider', 'amalgamSpider', null]
+    },
+    medium_3: {
+        env: null,
+        units: ['vitrailSpider', 'fritta', 'fritta', 'fritta']
     },
 
-    // Тяжелые группы (Элита)
     hard_1: {
         env: 'piezoCrystal',
-        units: ['vitrailSpider', 'glassSpider', 'amalgamSpider', null] // Витраж танкует
+        units: ['vitrailSpider', 'glassSpider', 'amalgamSpider', null]
     },
 
-    // Босс
     boss_mother: {
         env: 'piezoCrystal',
-        units: ['fritta', 'fritta', 'glassSpider', 'glassMother'] // Мать сзади (занимает 4 позицию, но модельку потом сделаем большой)
+        units: ['fritta', 'glassMother', 'glassSpider', 'glassSpider']
     },
 
     demo_1: {

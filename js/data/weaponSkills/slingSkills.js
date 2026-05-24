@@ -14,6 +14,7 @@ export const DEFAULT_SLING_SKILL = {
     comboChanges: null,
     uniqueCondition: false,
     uniqueConditionReward: null,
+    staminaCost: 6,
 };
 
 export const SLING_SKILLS = {
