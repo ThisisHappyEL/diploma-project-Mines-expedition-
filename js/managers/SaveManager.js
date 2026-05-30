@@ -147,7 +147,7 @@ export class SaveManager {
         console.log("📡 Запуск фоновой синхронизации данных с сервером...");
 
         try {
-            const response = await fetch('http://localhost:3000/sync', {
+            const response = await fetch('https://litho-descent-api.onrender.com/sync', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
