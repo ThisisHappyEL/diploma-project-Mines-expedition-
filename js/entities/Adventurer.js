@@ -72,7 +72,13 @@ export class Adventurer extends Unit {
         if (!weapon || !weapon.skills) return [];
         const weaponLevel = Number(weapon.level) || 1;
         const DEFAULT = weapon.defaultSkillData || {};
-        return weapon.skills.filter(s => weaponLevel >= (s.fromLevel || 1)).map(s => {
+
+        // мханика фильтрации навыков от уровня оружия. В текущей реализации не нужна
+        // const filteredSkills = weapon.skills.filter(s => weaponLevel >= (s.fromLevel || 1));
+        
+        const filteredSkills = weapon.skills;
+
+        return filteredSkills.map(s => {
             const merged = { ...DEFAULT, ...s, ...(s[`level${weaponLevel}`] || {}) };
             for (let i = 1; i <= 4; i++) delete merged[`level${i}`];
             return merged;

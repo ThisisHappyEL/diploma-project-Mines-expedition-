@@ -1,0 +1,95 @@
+export const LOOT = {
+  valuableTypesOfStone: {
+    pumice: { name: 'Пемза', price: 15, foundIn: ['glassForest'], description: 'Пористый вулканический камень. Легкий, шершавый, отлично очищает налет.', sprite: 'correctFilePath' },
+    marble: { name: 'Мрамор', price: 45, foundIn: ['glassForest'], description: 'Холодная благородная порода. Скупщики из верхних городов охотно берут его для облицовки.', sprite: 'correctFilePath' },
+    apatite: { name: 'Апатиты', price: 35, foundIn: ['glassForest'], description: 'Минерал с легким фосфорным свечением. Измельчается для удобрений тепличных грибов.', sprite: 'correctFilePath' },
+    chalk: { name: 'Мел', price: 5, foundIn: ['glassForest'], description: 'Мягкий известняк. Оставляет четкие белые следы на камне. Обожаем картографами.', sprite: 'correctFilePath' },
+    alabaster: { name: 'Алебастр', price: 25, foundIn: ['glassForest'], description: 'Хрупкий полупрозрачный гипс. Поддается обработке даже простым ножом.', sprite: 'correctFilePath' },
+    basalt: { name: 'Базальт', price: 20, foundIn: ['glassForest'], description: 'Тяжелый черный монолит. Невероятно прочный, используется под фундаменты тяжелых машин.', sprite: 'correctFilePath' },
+    granite: { name: 'Гранит', price: 30, foundIn: ['glassForest'], description: 'Символ твердости недр. Искрится под факелами вкраплениями слюды.', sprite: 'correctFilePath' },
+  },
+  
+  minerals: {
+    brownCoal: { name: 'Бурый уголь', price: 5, foundIn: ['glassForest'], description: 'Молодой уголь. Коптит, дает много золы, но горит исправно.', sprite: 'correctFilePath' },
+    coal: { name: 'Уголь', price: 10, foundIn: ['glassForest'], description: 'Черное золото кочегаров. Стабильный жар для обогрева Клетьевого Двора.', sprite: 'correctFilePath' },
+    anthracite: { name: 'Антрацит', price: 15, foundIn: ['glassForest'], description: 'Плотный, глянцевый уголь высшего сорта. Горит жарким синим пламенем без дыма.', sprite: 'correctFilePath' },
+    quartz: { name: 'Кварц', price: 12, foundIn: ['glassForest'], description: 'Острые прозрачные кристаллы. При соударении высекают искры.', sprite: 'correctFilePath' },
+    copper: { name: 'Медь', price: 20, foundIn: ['glassForest'], description: 'Пластичный красноватый металл. Основа проводки и простых латунных приборов.', sprite: 'correctFilePath' },
+    iron: { name: 'Железо', price: 25, foundIn: ['glassForest'], description: 'Главный строительный металл. Скрежещет на стыках рельс и держит своды шахт.', sprite: 'correctFilePath' },
+    lead: { name: 'Свинец', price: 30, foundIn: ['glassForest'], description: 'Тяжелый, токсичный и мягкий металл. Используется для экранирования опасных руд.', sprite: 'correctFilePath' },
+    tin: { name: 'Олово', price: 25, foundIn: ['glassForest'], description: 'Легкоплавкий серебристый металл. Незаменим в пайке и создании бронзы.', sprite: 'correctFilePath' },
+    silver: { name: 'Серебро', price: 50, foundIn: ['glassForest'], description: 'Благородный блеск. Обладает бактерицидными свойствами, ценится ювелирами и врачами.', sprite: 'correctFilePath' },
+    gold: { name: 'Золото', price: 100, foundIn: ['glassForest'], description: 'Мягкий сияющий металл. Валюта верхнего мира, не темнеющая от пещерной влаги.', sprite: 'correctFilePath' },
+    platinum: { name: 'Платина', price: 160, foundIn: ['glassForest'], description: 'Невероятно тугоплавкий и стойкий металл. Настоящее сокровище глубин.', sprite: 'correctFilePath' },
+    uranium: { name: 'Уран', price: 250, foundIn: ['glassForest'], description: 'Тяжелая зеленоватая порода. Щекочет пальцы странным теплом. Хранить в свинце!', sprite: 'correctFilePath' },
+    pyrite: { name: 'Пирит', price: 15, foundIn: ['glassForest'], description: 'Золото дураков. Обманчиво сияет в жилах, но при ударе пахнет серой.', sprite: 'correctFilePath' },
+    tungsten: { name: 'Вольфрам', price: 85, foundIn: ['glassForest'], description: 'Сверхтяжелый металл. Из него делают нити накаливания для глубинных прожекторов.', sprite: 'correctFilePath' },
+    manganese: { name: 'Марганец', price: 40, foundIn: ['glassForest'], description: 'Хрупкий металл. Добавляется в сталь кузнецами, делая кирки негнущимися.', sprite: 'correctFilePath' },
+  },
+
+  preciousStones: {
+    topaz: { name: 'Топазы', price: 65, foundIn: ['glassForest'], description: 'Прозрачные винно-желтые камни. Словно застывшие капли древнего меда.', sprite: 'correctFilePath' },
+    amethyst: { name: 'Аметисты', price: 70, foundIn: ['glassForest'], description: 'Фиолетовые друзы. Говорят, они уберегают шахтеров от пещерного безумия.', sprite: 'correctFilePath' },
+    amber: { name: 'Янтарь', price: 50, foundIn: ['glassForest'], description: 'Затвердевшая смола первобытных деревьев. Внутри некоторых видны лапки ископаемых мошек.', sprite: 'correctFilePath' },
+    sapphire: { name: 'Сапфиры', price: 120, foundIn: ['glassForest'], description: 'Глубокий синий кристалл. Словно кусочек неба, потерянный под толщей земли.', sprite: 'correctFilePath' },
+    emerald: { name: 'Изумруды', price: 140, foundIn: ['glassForest'], description: 'Зеленый кристалл безупречной чистоты. Напоминает о лесах верхнего мира.', sprite: 'correctFilePath' },
+    ruby: { name: 'Рубины', price: 160, foundIn: ['glassForest'], description: 'Кроваво-красный драгоценный камень. Переливается в лучах факелов, как живой огонь.', sprite: 'correctFilePath' },
+    diamond: { name: 'Алмазы', price: 300, foundIn: ['glassForest'], description: 'Абсолютная твердость. Режет стекло и крушит гранитные резцы.', sprite: 'correctFilePath' },
+  },
+
+  naturalResources: {
+    resin: { name: 'Смола', price: 15, foundIn: ['glassForest'], description: 'Густые слезы подземных корней. Отличный герметик и основа для факелов.', sprite: 'correctFilePath' },
+    oil: { name: 'Нефть', price: 40, foundIn: ['glassForest'], description: 'Маслянистая темная жидкость. Пахнет бензином, горит ярко и яростно.', sprite: 'correctFilePath' },
+    ochre: { name: 'Охра', price: 20, foundIn: ['glassForest'], description: 'Глина, насыщенная железом. Дает сочный рыжий пигмент для маркировки опасных зон пещеры.', sprite: 'correctFilePath' },
+    oilShale: { name: 'Горючие сланцы', price: 25, foundIn: ['glassForest'], description: 'Слоистый сланец, пропитанный древней органикой. Легко вспыхивает.', sprite: 'correctFilePath' },
+    peat: { name: 'Торф', price: 10, foundIn: ['glassForest'], description: 'Спрессованный мох болотных глубин. Высушивается и используется как топливо.', sprite: 'correctFilePath' },
+    cinnabar: { name: 'Киноварь', price: 60, foundIn: ['glassForest'], description: 'Ядовито-красный минерал. Главный источник летучей жидкой ртути.', sprite: 'correctFilePath' },
+    potassium: { name: 'Калий', price: 30, foundIn: ['glassForest'], description: 'Серебристый щелочной металл. Бурно шипит и взрывается при контакте с пещерным конденсатом.', sprite: 'correctFilePath' },
+    salt: { name: 'Соль', price: 10, foundIn: ['glassForest'], description: 'Обычная каменная соль. Без нее солонина в экспедиции сгниет за два дня.', sprite: 'correctFilePath' },
+    obsidian: { name: 'Обсидиан', price: 50, foundIn: ['glassForest'], description: 'Вулканическое стекло. Раскалывается на бритвенно-острые пластины.', sprite: 'correctFilePath' },
+    saltpeter: { name: 'Селитра', price: 35, foundIn: ['glassForest'], description: 'Белый солевой налет на влажных стенах пещер. Сырье для пороховой смеси.', sprite: 'correctFilePath' },
+    pearl: { name: 'Жемчуг', price: 100, foundIn: ['glassForest'], description: 'Перламутровый шарик из раковин подземных слепых моллюсков.', sprite: 'correctFilePath' },
+    iodine: { name: 'Йод', price: 45, foundIn: ['glassForest'], description: 'Темные фиолетовые чешуйки. Обеззараживает глубокие рваные раны рудокопов.', sprite: 'correctFilePath' },
+    clay: { name: 'Глина', price: 5, foundIn: ['glassForest'], description: 'Мягкая податливая земля. Используется для герметизации стыков вентиляции.', sprite: 'correctFilePath' },
+    borax: { name: 'Бура', price: 25, foundIn: ['glassForest'], description: 'Минеральная соль. Используется кузнецами как флюс при ковке инструментов.', sprite: 'correctFilePath' },
+    humus: { name: 'Гумус', price: 15, foundIn: ['glassForest'], description: 'Плодородная органика. Настоящее золото для грибных ферм Клетьевого Двора.', sprite: 'correctFilePath' },
+    zinc: { name: 'Цинк', price: 30, foundIn: ['glassForest'], description: 'Тусклый синеватый металл. Напыляется на железные ведра и трубы для защиты от ржавчины.', sprite: 'correctFilePath' },
+  },
+
+  gases: {
+    methane: { name: 'Метан', price: 20, foundIn: ['glassForest'], description: 'Горючий невидимый газ. Копится под потолком выработок. Остерегайтесь открытого огня!', sprite: 'correctFilePath' },
+    helium: { name: 'Гелий', price: 80, foundIn: ['glassForest'], description: 'Инертный легкий газ. Используется учеными в охладительных установках.', sprite: 'correctFilePath' },
+    nitrogen: { name: 'Азот', price: 15, foundIn: ['glassForest'], description: 'Холодное удушье глубин. Используется для замораживания плывунов при стройке шахт.', sprite: 'correctFilePath' },
+  },
+
+  researchResults: {
+    obsGlassForest: { name: 'Наблюдения о стеклянном лесе', price: 75, foundIn: ['glassForest'], description: 'Заметки о преломлении света на хрустальных ветвях глубинного биома.', sprite: 'correctFilePath' },
+    obsSpiders: { name: 'Наблюдение за стеклянными пауками', price: 85, foundIn: ['glassForest'], description: 'Записи повадок прозрачных членистоногих, охотящихся во тьме.', sprite: 'correctFilePath' },
+    bioQuartzSpiders: { name: 'Биологические процессы кварцевых пауков', price: 120, foundIn: ['glassForest'], description: 'Эскизы органов питания и размножения существ на кремниевой основе.', sprite: 'correctFilePath' },
+    relMineralSpiders: { name: 'Внутривидовые отношения минеральных пауков', price: 150, foundIn: ['glassForest'], description: 'Изучение социальной структуры и борьбы за территорию среди паучьих роев.', sprite: 'correctFilePath' },
+    siliconHusbandry: { name: 'Кремниевое скотоводство', price: 200, foundIn: ['glassForest'], description: 'Гипотезы о том, как крупные стеклопауки намеренно разводят пещерных клещей.', sprite: 'correctFilePath' },
+    loreBloodlessLife: { name: 'Художественное описание бескровной жизни', price: 250, foundIn: ['glassForest'], description: 'Красиво оформленный дневник исследователя, очарованного кремниевой флорой.', sprite: 'correctFilePath' },
+  },
+
+  scientificSamples: {
+    glowingMoss: { name: "Светящийся мох", price: 15, description: "Образец пещерной флоры, излучающий слабое синеватое свечение." },
+    fossilizedTrilobite: { name: "Окаменелый трилобит", price: 25, description: "Древний панцирный организм, застывший в камне миллионы лет назад." },
+    crystalDust: { name: "Кристаллическая пыль", price: 30, description: "Мелкие сверкающие частицы, собранные со сводов пещеры." },
+    caveSoilSample: { name: "Проба пещерного грунта", price: 40, description: "Образец почвы, содержащий редкие минеральные присадки." },
+    undegroundFungusSpores: { name: "Споры подземного гриба", price: 45, description: "Активные споры редкого гриба-паразита, светящегося во тьме." },
+  },
+
+  battlePrey: {
+    piezoShard: { name: 'Осколок пьезокристалла', price: 60, foundIn: ['glassForest'], description: 'Светится при физическом сжатии. Источник статического электричества.', sprite: 'correctFilePath' },
+    intactPincers: { name: 'Цельные кремниевые клещи', price: 45, foundIn: ['glassForest'], description: 'Острые как бритва жвалы пещерного хищника. Можно сделать отличный кинжал.', sprite: 'correctFilePath' },
+    tickHusk: { name: 'Шелуха кремниевых клещей', price: 15, foundIn: ['glassForest'], description: 'Легкий и прочный панцирь. Напоминает по свойствам слюду.', sprite: 'correctFilePath' },
+    conductiveWeb: { name: 'Моток токопроводящей паутины', price: 80, foundIn: ['glassForest'], description: 'Волокна, способные передавать разряды тока. Очень прочные на разрыв.', sprite: 'correctFilePath' },
+    swarmMotherAcid: { name: 'Кислоты матери роя', price: 150, foundIn: ['glassForest'], description: 'Флакон с едкой шипящей жижей. Способна растворить стальную решетку за минуту.', sprite: 'correctFilePath' },
+    intactFrit: { name: 'Цельная фритта', price: 70, foundIn: ['glassForest'], description: 'Запекшаяся кремниевая масса из логова стеклопауков. Содержит вкрапления драгоценностей.', sprite: 'correctFilePath' },
+    glassSpiderHead: { name: 'Головогрудь стеклопаука', price: 90, foundIn: ['glassForest'], description: 'Тяжелый полупрозрачный панцирь. Мертвые фасеточные глаза тускло мерцают.', sprite: 'correctFilePath' },
+    amalgamSpiderHead: { name: 'Головогрудь паука-амальгамы', price: 130, foundIn: ['glassForest'], description: 'Голова чудовища, покрытая зеркальной ртутной пленкой.', sprite: 'correctFilePath' },
+    stainedGlassSpiderHead: { name: 'Головогрудь паука-витража', price: 180, foundIn: ['glassForest'], description: 'Сложная разноцветная структура из спекшегося цветного стекла пещер.', sprite: 'correctFilePath' },
+    amalgamSpiderLeg: { name: 'Лапка паука-амальгамы', price: 40, foundIn: ['glassForest'], description: 'Острый зеркальный сустав. Настолько гладкий, что на нем не задерживается кровь.', sprite: 'correctFilePath' },
+    stainedGlassCarapace: { name: 'Внешний корпус паука-витража', price: 110, foundIn: ['glassForest'], description: 'Яркие стеклянные пластины, отражающие свет во всех направлениях.', sprite: 'correctFilePath' },
+  }
+};

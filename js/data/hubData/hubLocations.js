@@ -2,7 +2,7 @@ export const HUB_LOCATIONS = [
     {
         id: 'manager`s_office',
         name: 'Кабинет распорядителя',
-        description: 'Тут обитает ваш сварливый начальник, дающий вам конкретные цели для будущих экспедиций',
+        description: 'Тут обитает ваш сварливый начальник, дающий вам конкретные цели для будущих экспедиций и передающий вам заказы фракций Унии.',
         action: 'OPEN_MANAGER`S_OFFICE'
     },
     {
@@ -12,10 +12,28 @@ export const HUB_LOCATIONS = [
         action: 'OPEN_RECRUITMENT'
     },
     {
+        id: 'arsenal',
+        name: 'Арсенал',
+        description: 'Место, где вы можете ознакомиться с каждым нанятым погруженцем и снарядить его в вылазку.',
+        action: 'OPEN_WAREHOUSE'
+    },
+    {
+        id: 'warehouse',
+        name: 'Склад',
+        description: 'Ваши запасы снаряжения, оружия и материалов.',
+        action: 'OPEN_WAREHOUSE'
+    },
+    {
         id: 'barracks',
         name: 'Казармы',
-        description: 'Место отдыха приключенцев.',
+        description: 'Место отдыха погруженцев. Если после предыдущей вылазки кто-то выбился из сил - вы можете оплатить ему отдых.',
         action: 'OPEN_BARRACKS_MENU'
+    },
+    {
+        id: 'hospital',
+        name: 'Лечебница',
+        description: 'Место, где вашим недобиткам помогут вновь встать на ноги. Если жизненные силы покидают кого-то после последней заварушки в экспедиции - направляйте сюда.',
+        action: 'OPEN_HOSPITAL'
     },
     {
         id: 'bazaar',
@@ -24,22 +42,10 @@ export const HUB_LOCATIONS = [
         action: 'OPEN_SHOP'
     },
     {
-        id: 'chambers_of_science',
-        name: 'Палаты науки',
-        description: 'Звуки оживлённых дискуссий с мало понятными вам понятиями и терминами.',
-        action: 'OPEN_CHAMBERS_OF_SCIENCE'
-    },
-    {
         id: 'forge',
         name: 'Кузня',
-        description: 'Звон молотов и жар углей. Улучшение снаряжения.',
+        description: 'Звон молотов и жар углей. Покупка нового оружия и брони, а также профессиональной формы, упрощающей работу по специальности.',
         action: 'OPEN_FORGE'
-    },
-    {
-        id: 'hospital',
-        name: 'Лечебница',
-        description: 'Место, где вашим недобиткам помогут вновь встать на ноги.',
-        action: 'OPEN_HOSPITAL'
     },
     {
         id: 'cleat',
@@ -47,10 +53,4 @@ export const HUB_LOCATIONS = [
         description: 'Огромное колесо-подъёмник. Путь в недра начинается здесь.',
         action: 'OPEN_EXPEDITION_MENU'
     },
-    {
-        id: 'warehouse',
-        name: 'Склад',
-        description: 'Ваши запасы снаряжения, оружия и материалов.',
-        action: 'OPEN_WAREHOUSE'
-    }
 ];

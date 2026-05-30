@@ -1,12 +1,167 @@
-import { BattleManager } from '../managers/BattleManager.js';
+import { BattleManager } from '../managers/battleSceneManagers/BattleManager.js';
 import { Adventurer } from '../entities/Adventurer.js';
 import { Unit } from '../entities/Unit.js';
-import { test_weapon } from '../data/battleData/weapon.js';
+import { test_weapon, swords } from '../data/battleData/weapon.js';
 import { GLASS_FOREST_ENEMIES, GLASS_FOREST_ENCOUNTERS } from '../data/battleData/enemies.js';
 import { GameState } from '../core/GameState.js';
 import { SceneManager } from '../core/SceneManager.js';
-import { BattleUIHelper } from '../managers/BattleUIHelper.js';
+import { BattleUIHelper } from '../managers/battleSceneManagers/BattleUIHelper.js';
 import { EFFECTS } from '../data/battleData/effects.js';
+import { CharacterRenderer } from '../managers/hubLocationManagers/CharacterRenderer.js';
+
+// Соединялка элементов спрайта погруженца
+function getLayersFromHTML(adv) {
+    const html = CharacterRenderer.getAvatarHTML(adv, "100%", true);
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const imgs = temp.querySelectorAll('img');
+    return Array.from(imgs).map(img => img.getAttribute('src'));
+}
+
+Adventurer.prototype.drawBody = function(ctx, isActive, isValidTarget, isHovered) {
+    // Анимация смерти
+    if (this.isDead) {
+        if (this.deathAnimProgress === undefined) {
+            this.deathAnimProgress = 0;
+        }
+        if (this.deathAnimProgress < 1.0) {
+            this.deathAnimProgress += 0.05;
+        } else {
+            return;
+        }
+    }
+
+    ctx.save();
+
+    const x = this.x;
+    const y = this.y;
+    const w = this.width;
+    const h = this.height;
+
+    if (!this._avatarLayersLoaded) {
+        this._avatarLayersLoaded = [];
+        try {
+            const paths = getLayersFromHTML(this);
+            paths.forEach(src => {
+                const img = new Image();
+                img.onload = () => { this._avatarLayersLoaded.push(img); };
+                img.src = src;
+            });
+        } catch (e) {
+            console.error("Ошибка ленивой загрузки слоев аватара:", e);
+        }
+    }
+
+    if (this._avatarLayersLoaded && this._avatarLayersLoaded.length > 0) {
+        // Размер спрайта погруженца
+        const scaleX = 1.75;  
+        const scaleY = 1.75;  
+        const offsetX = -10;   
+        const offsetY = 0;   
+
+        const drawW = w * scaleX;
+        const drawH = h * scaleY;
+        const drawX = x + (w - drawW) / 2 + offsetX;
+        const drawY = y - drawH + offsetY;
+
+        if (!this._offscreenCanvas) {
+            this._offscreenCanvas = document.createElement('canvas');
+            this._offscreenCtx = this._offscreenCanvas.getContext('2d');
+        }
+        this._offscreenCanvas.width = drawW;
+        this._offscreenCanvas.height = drawH;
+        this._offscreenCtx.clearRect(0, 0, drawW, drawH);
+
+        this._avatarLayersLoaded.forEach(img => {
+            if (img.complete) {
+                this._offscreenCtx.drawImage(img, 0, 0, drawW, drawH);
+            }
+        });
+
+        // Падение набок при смерти
+        if (this.isDead) {
+            const prog = this.deathAnimProgress;
+            ctx.globalAlpha = Math.max(0, 1 - prog);
+            const centerX = drawX + drawW / 2;
+            const centerY = drawY + drawH;
+            ctx.translate(centerX, centerY);
+            ctx.rotate(-Math.PI / 2 * prog);
+            ctx.translate(-centerX, -centerY);
+        }
+
+        let shadowColor = null;
+        let shadowBlur = 0;
+
+        if (!this.isDead) {
+            if (isActive) {
+                if (isValidTarget) {
+                    shadowColor = isHovered ? '#00f0ff' : '#ffbf00'; 
+                    shadowBlur = isHovered ? 28 : 24; 
+                } else {
+                    shadowColor = '#ffbf00'; 
+                    shadowBlur = 20;
+                }
+            } else if (isValidTarget) {
+                shadowColor = '#4affab';
+                shadowBlur = isHovered ? 25 : 15; 
+            } else if (isHovered) {
+                shadowColor = '#ffffff';
+                shadowBlur = 15;
+            }
+        }
+
+        if (shadowColor) {
+            ctx.shadowColor = shadowColor;
+            ctx.shadowBlur = shadowBlur;
+        }
+
+        ctx.drawImage(this._offscreenCanvas, drawX, drawY);
+    } else {
+        if (!this.isDead) {
+            ctx.fillStyle = isActive ? "rgba(255, 191, 0, 0.4)" : "rgba(74, 144, 226, 0.3)";
+            ctx.fillRect(x, y - h, w, h);
+        }
+    }
+
+    ctx.restore();
+};
+
+const originalUnitDrawBody = Unit.prototype.drawBody;
+Unit.prototype.drawBody = function(ctx, isActive, isValidTarget, isHovered) {
+    if (this.isDead) {
+        if (this.deathAnimProgress === undefined) {
+            this.deathAnimProgress = 0;
+        }
+        if (this.deathAnimProgress < 1.0) {
+            this.deathAnimProgress += 0.05;
+        } else {
+            return;
+        }
+    }
+
+    ctx.save();
+
+    if (this.isDead) {
+        const prog = this.deathAnimProgress;
+        ctx.globalAlpha = Math.max(0, 1 - prog);
+        
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y; 
+        
+        ctx.translate(centerX, centerY);
+        ctx.rotate(Math.PI / 2 * prog);
+        ctx.translate(-centerX, -centerY);
+    }
+
+    originalUnitDrawBody.call(this, ctx, isActive, isValidTarget, isHovered);
+
+    ctx.restore();
+};
+
+Adventurer.prototype.isClicked = function(mx, my) {
+    return mx >= this.x && mx <= this.x + this.width &&
+           my >= this.y - this.height && my <= this.y;
+};
 
 export const BattleScene = {
     battleManager: null,
@@ -60,13 +215,22 @@ export const BattleScene = {
         this.bgLoaded = false;
         let bgRand = Math.floor(Math.random() * 6);
         this.bgImage.onload = () => { this.bgLoaded = true; };
-        this.bgImage.src = `assets/img/backgrounds/glassForest${bgRand}.png`;
+        this.bgImage.src = `assets/img/backgrounds/glassForest/glassForest${bgRand}.png`;
 
-        GameState.currentSquad.forEach((data, index) => {
-            const hero = new Adventurer(data, index + 1);
-            if (!hero.equipment.rightHand) hero.equip('rightHand', test_weapon.debugSword);
+        let activePos = 1;
+        GameState.currentSquad.forEach((data) => {
+            if (data.hp <= 0) return; // Смертно уставшие не дерутся
+            
+            const hero = new Adventurer(data, activePos);
+            Object.assign(hero, data);
+            
+            // Временное решение отсутствия кулачных ударов
+            if (!hero.equipment.rightHand) hero.equip('rightHand', swords.rustySword);
+            
             this.gameUnits.push(hero);
+            activePos++;
         });
+
 
         const getSpriteUrl = (data) => {
             if (data.spriteVariations) {
@@ -77,7 +241,7 @@ export const BattleScene = {
             return data.spriteUrl; 
         };
 
-        const encounter = GLASS_FOREST_ENCOUNTERS.hard_1;
+        const encounter = GLASS_FOREST_ENCOUNTERS[GameState.selectedEncounter];
         
         if (encounter.env) {
             let envData = GLASS_FOREST_ENEMIES[encounter.env];
@@ -125,6 +289,17 @@ export const BattleScene = {
         this.battleManager = new BattleManager(this.gameUnits, (a, s, m) => this.updateUI(a, s, m));
         this.battleManager.logPanel = document.getElementById('b-log-container');
         this.setupInput();
+
+        const overlay = document.getElementById('battle-transition-overlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                if (!overlay.classList.contains('active')) {
+                    overlay.classList.add('hidden');
+                }
+            }, 1200);
+        }
+
         this.battleManager.startBattle();
     },
 
@@ -136,10 +311,40 @@ export const BattleScene = {
             const activeClass = index === 0 ? 'active' : '';
             
             let avatarContent = '';
-            if (unit.sprite && unit.sprite.src) {
-                avatarContent = `<div style="width:100%; height:100%; background-image: url('${unit.sprite.src}'); background-size: 200%; background-position: 20% 50%; background-repeat: no-repeat; border-radius: 4px;"></div>`;
+            if (unit.side === 'player') {
+                const layeredHTML = CharacterRenderer.getAvatarHTML(unit, "100%", true);
+                // скейлинг и смещение лиц погруженцев в очерёдности ходов
+                const scale = "5";
+                const translateX = "-10%";
+                const translateY = "-10%";
+
+                avatarContent = `
+                    <div class="char-avatar-layered" style="width:100%; height:100%; background: transparent; border: none; box-shadow: none; overflow:hidden; transform: scale(${scale}) translateX(${translateX}) translateY(${translateY}); transform-origin: top center;">
+                        ${layeredHTML}
+                    </div>
+                `;
+            } else if (unit.sprite && unit.sprite.src) {
+                // Скейлинг и смещение для врагов в очереди ходов
+                let size = "200%";
+                let posX = "20%";
+                let posY = "50%";
+                
+                const name = unit.name.toLowerCase();
+                if (name.includes("мать")) {
+                    size = "200%"; posX = "50%"; posY = "50%";
+                } else if (name.includes("витраж")) {
+                    size = "240%"; posX = "50%"; posY = "50%";
+                } else if (name.includes("амальгама")) {
+                    size = "400%"; posX = "50%"; posY = "80%";
+                } else if (name.includes("стеклянный")) {
+                    size = "500%"; posX = "50%"; posY = "90%";
+                } else if (name.includes("фритта")) {
+                    size = "550%"; posX = "50%"; posY = "90%";
+                }
+                
+                avatarContent = `<div style="width:100%; height:100%; background-image: url('${unit.sprite.src}'); background-size: ${size}; background-position: ${posX} ${posY}; background-repeat: no-repeat; border-radius: 4px;"></div>`;
             } else {
-                let bgColor = unit.side === 'player' ? 'rgba(74, 144, 226, 0.2)' : 'rgba(226, 74, 74, 0.2)';
+                let bgColor = 'rgba(226, 74, 74, 0.2)';
                 avatarContent = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; background:${bgColor}; border-radius: 4px;">${unit.name.charAt(0)}</div>`;
             }
 
@@ -282,8 +487,8 @@ export const BattleScene = {
         const canvas = SceneManager.canvas;
         
         canvas.oncontextmenu = (e) => {
-            e.preventDefault(); // Блокировка стандартного ПКМ браузера
-            this.cancelCurrentAction(); // сброс выбранного навыка
+            e.preventDefault();
+            this.cancelCurrentAction();
         };
 
         canvas.onmousemove = (e) => {
@@ -338,7 +543,7 @@ export const BattleScene = {
         let active = this.battleManager.getActiveUnit();
         if (active && active.side === 'player') {
             this.battleManager.selectedSkill = null;
-            this.battleManager.state = 'IDLE'; // возвращение режима ожидания
+            this.battleManager.state = 'IDLE';
             
             this.updateUI(active, active.getAvailableSkills(), this.battleManager);
         }

@@ -2,18 +2,29 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Litho-Survival</title>
+    <title>Litho-Descent</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
         <canvas id="mainCanvas" width="1920" height="1080"></canvas>
         
-        <div id="top-bar" class="interactive hidden">
-            <span>Цикл: <span id="ui-cycle">1</span></span>
-            <span>Свечи: <span id="ui-candles" class="resource">0</span></span>
-            <span>Авантюристов: <span id="ui-roster-count">0</span></span>
-            <span>Жалование всех погруженцев: <span id="ui-salary" style="color: #ff6666;">0</span></span>
+        <div id="top-bar" class="interactive hidden" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <span>Цикл: <span id="ui-cycle">1</span></span>
+                <span>Свечи: <span id="ui-candles" class="resource">0</span> <span id="ui-debt-timer" style="color: var(--color-danger); font-weight: bold; margin-left: 10px; display: none;"></span></span>
+                <span>Авантюристов: <span id="ui-roster-count">0</span></span>
+                <span>Жалование всех погруженцев: <span id="ui-salary" style="color: #ff6666;">0</span></span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span id="ui-active-profile-name" style="color: var(--color-gold); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 1px 1px 2px #000;">
+                    ЭКСПЕДИЦИЯ: ---
+                </span>
+                <button id="btn-profiles-open" class="hub-btn" style="padding: 4px 12px; font-size: 11px; border-color: var(--color-gold); color: var(--color-gold); font-weight: bold; cursor: pointer; margin: 0;">
+                    💾 Профили
+                </button>
+            </div>
         </div>
 
         <div id="ui-hub" class="ui-layer interactive hidden">
@@ -30,155 +41,252 @@
             </div>
         </div>
 
-         <div id="char-details-modal" class="hidden interactive" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: flex; justify-content: center; align-items: center;">
-            <div style="background: #1a1612; border: 2px solid #ffbf00; width: 1150px; height: 850px; display: flex; flex-direction: column; padding: 30px; box-sizing: border-box; box-shadow: 0 0 50px #000;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #555; padding-bottom: 15px; margin-bottom: 20px;">
-                    <h2 id="cd-name" style="margin: 0; color: #ffbf00; font-size: 32px;">Имя персонажа</h2>
-                    <button id="cd-close-btn" class="hub-btn" style="border-color: #ff4444; padding: 10px 25px; font-weight: bold;">ЗАКРЫТЬ</button>
-                </div>
-
-                <div style="display: flex; gap: 20px; flex: 1;">
-                    <div style="flex: 1; background: #2a241e; padding: 15px; border: 1px solid #555;">
-                        <div id="cd-info" style="color: #aaa; font-style: italic; margin-bottom: 15px; font-size: 14px;"></div>
-                        <div id="cd-stats"></div>
-                    </div>
-
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
-                        <h3 style="margin:0; text-align:center;">Экипировка</h3>
-                        <div style="display: flex; gap: 10px;">
-                            <div id="cd-slot-rightHand" class="equip-slot" style="flex:1;">Основное оружие</div>
-                            <div id="cd-slot-body" class="equip-slot" style="flex:1;">Тело</div>
-                            <div id="cd-slot-leftHand" class="equip-slot" style="flex:1;">Вспомогательное</div>
+        <div id="char-details-modal" class="hidden interactive modal-overlay">
+            <div class="modal-container" style="width: 1150px; height: 850px; display: flex; flex-direction: column;">
+                
+                <div class="modal-header" style="flex-direction: column; align-items: flex-start; gap: 5px; flex-shrink: 0;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <div style="display: flex; align-items: baseline; gap: 15px;">
+                            <h2 id="cd-name" class="text-gold" style="font-size: 36px;">Имя</h2>
+                            <span id="cd-level" style="color: var(--color-gold); font-size: 16px; font-weight: bold;">1 Уровень</span>
+                            <span style="color: #555; font-size: 18px;">|</span>
+                            <span id="cd-bg" style="color: #aaa; font-size: 16px; cursor: help; border-bottom: 1px dotted #888;">Предыстория</span>
+                            <span style="color: #555; font-size: 18px;">|</span>
+                            <span id="cd-trait" style="color: var(--color-success); font-size: 16px; cursor: help; border-bottom: 1px dotted var(--color-success);">Черта</span>
                         </div>
-                        <h4 style="margin: 10px 0 0 0; text-align:center; color: #aaa;">Боевые навыки</h4>
-                        <div id="cd-skills-panel" style="display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; overflow-y: auto; max-height: 250px;"></div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <button id="cd-dismiss-btn" class="hub-btn btn-danger btn-bold" style="border-color: var(--color-danger); color: var(--color-danger); transition: 0.2s;">УВОЛИТЬ</button>
+                            <button id="cd-close-btn" class="hub-btn btn-danger btn-bold">ЗАКРЫТЬ</button>
+                        </div>
                     </div>
                 </div>
 
-                <div style="height: 200px; border-top: 1px solid #555; margin-top: 15px; padding-top: 10px;">
-                    <h4 style="margin: 0 0 10px 0;">Доступно на складе:</h4>
-                    <div id="cd-inventory" style="overflow-x: auto; padding-bottom: 10px; width: 100%;"></div>
+                <div class="modal-body" style="gap: 30px; margin-top: 10px; flex: 1; display: flex; min-height: 0;">
+                    
+                    <div style="flex: 1; display: flex; gap: 20px; background: var(--bg-panel); padding: 20px; border: 1px solid var(--border-main); align-items: stretch;">
+                        <div id="cd-portrait" class="char-avatar-layered" style="flex: 1; border: 1px solid var(--border-main); background: #050403;"></div>
+                        <div id="cd-stats" style="flex: 1; display: flex; flex-direction: column;"></div>
+                    </div>
+
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 20px; background: var(--bg-panel); padding: 20px; border: 1px solid var(--border-main);">
+                        <div style="text-align: center; color: #ffbf00; font-size: 18px;">Экипировка</div>
+                        <div style="display: flex; justify-content: center; gap: 20px;">
+                            <div id="cd-slot-wrap-rightHand"></div>
+                            <div id="cd-slot-wrap-body"></div>
+                            <div id="cd-slot-wrap-leftHand"></div>
+                        </div>
+                        
+                        <div style="text-align: center; color: #ffbf00; font-size: 18px; margin-top: 10px;">Боевые навыки</div>
+                        <div id="cd-skills-panel" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
+                    </div>
+                </div>
+
+                <div id="cd-inventory-panel" class="modal-inventory-panel" style="flex-shrink: 0; padding-top: 15px; margin-top: 20px; border-top: 1px solid var(--border-main);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="color: var(--color-gold); margin: 0;">Доступно на складе:</h4>
+                        <div id="cd-inv-filters" style="display: flex; gap: 5px;"></div>
+                    </div>
+                    <div id="cd-inventory" class="inventory-scroll-container" style="min-height: 120px; max-height: 120px;"></div>
                 </div>
             </div>
         </div>
 
-        <div id="ui-explore" class="ui-layer interactive hidden">
-            <div id="explore-header">
-                <button id="btn-pause" class="hub-btn">ПАУЗА</button>
-                <div id="pause-indicator">ОСТАНОВЛЕНО</div>
+        <div id="upgrade-modal" class="hidden interactive modal-overlay" style="z-index: 105;">
+            <div class="modal-container" style="width: 1000px; height: 700px; display: flex; flex-direction: column;">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-main); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 id="upgrade-title" class="text-gold" style="font-size: 32px; margin: 0;">Улучшение</h2>
+                    <button id="upgrade-close-btn" class="hub-btn btn-danger btn-bold">ЗАКРЫТЬ</button>
+                </div>
+                <div id="upgrade-body" style="flex: 1; display: flex; min-height: 0;">
+                </div>
             </div>
+        </div>
+        <div id="biome-modal" class="hidden interactive modal-overlay" style="z-index: 110;">
+            <div class="modal-container" style="width: 1200px; height: 800px; display: flex; flex-direction: column;">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-main); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="text-gold" style="font-size: 32px; margin: 0;">Картография недр</h2>
+                    <button id="biome-close-btn" class="hub-btn btn-danger btn-bold">ЗАКРЫТЬ</button>
+                </div>
+                <div id="biome-body" style="flex: 1; display: flex; min-height: 0;"></div>
+            </div>
+        </div>
 
+        <div id="bestiary-modal" class="hidden interactive modal-overlay" style="z-index: 120;">
+            <div class="modal-container" style="width: 1000px; height: 750px; display: flex; flex-direction: column; border-color: #b19cd9;">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-main); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="text-gold" style="font-size: 32px; margin: 0; color: #b19cd9;">Бестиарий</h2>
+                    <button id="bestiary-close-btn" class="hub-btn btn-danger btn-bold">ЗАКРЫТЬ</button>
+                </div>
+                <div id="bestiary-body" style="flex: 1; display: flex; min-height: 0;"></div>
+            </div>
+        </div>
+
+        <div id="equip-modal" class="hidden interactive modal-overlay" style="z-index: 110;">
+            <div class="modal-container" style="width: 1200px; height: 800px; display: flex; flex-direction: column;">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-main); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="text-gold" style="font-size: 32px; margin: 0;">Снаряжение экспедиции</h2>
+                    <button id="equip-close-btn" class="hub-btn btn-danger btn-bold">ЗАКРЫТЬ</button>
+                </div>
+                <div id="equip-body" style="flex: 1; display: flex; min-height: 0;"></div>
+            </div>
+        </div>
+
+        <div id="end-cycle-modal" class="hidden interactive modal-overlay">
+            <div class="modal-container" style="width: 600px; height: auto; max-height: 80vh; border: 2px solid var(--color-danger); box-shadow: 0 0 50px rgba(255, 68, 68, 0.2);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--color-danger); margin-bottom: 15px;">
+                    <h2 class="text-gold" style="color: var(--color-danger); font-size: 28px; margin: 0;">Завершение цикла</h2>
+                </div>
+                <div id="end-cycle-content" style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
+                </div>
+                <div style="display: flex; gap: 20px; margin-top: 25px;">
+                    <button id="btn-cancel-cycle" class="hub-btn" style="flex: 1; text-align: center;">Отмена</button>
+                    <button id="btn-confirm-cycle" class="hub-btn btn-danger btn-bold" style="flex: 1; text-align: center; color: var(--color-danger);">Начать новый цикл</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-over-modal" class="hidden interactive modal-overlay" style="z-index: 9999;">
+            <div class="modal-container" style="width: 500px; height: auto; border: 2px solid var(--color-danger); background: #0a0806; text-align: center; box-shadow: 0 0 100px rgba(255,0,0,0.5);">
+                <h1 style="color: var(--color-danger); font-size: 40px; margin-bottom: 10px; text-transform: uppercase;">Экспедиция провалена</h1>
+                <p style="color: #aaa; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
+                    У вас не осталось свечей, чтобы поддерживать свет и платить авантюристам. За вашу халатность вас приговорили к каторжным работам, а прямо сейчас вас, взяв под руки, выносит стража прочь из клетьевого двора.
+                </p>
+                <button class="hub-btn btn-danger btn-bold" style="font-size: 20px; padding: 15px 30px;" onclick="location.reload()">Начать заново</button>
+            </div>
+        </div>
+
+        <div id="ui-explore" class="ui-layer interactive hidden">
+            <div id="rest-aura"></div>
             <div id="explore-layout">
+                
                 <div id="explore-side">
-                    <div class="explore-card">
-                        <h3>Отряд в пещере</h3>
-                        <div id="explore-squad-list"></div>
+                    <div class="explore-card" style="padding: 0; flex: 0 0 auto; max-height: 440px; display: flex; flex-direction: column;">
+                        <div style="padding: 10px 15px; background: rgba(0,0,0,0.8); border-bottom: 1px solid #444; font-weight: bold;">Отряд в пещере</div>
+                        <div id="explore-squad-list" style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
                     </div>
-                    <div class="explore-card">
-                        <h3>Находки</h3>
-                        <div id="explore-loot">
-                            💎 Минералы: <span id="loot-minerals">0</span><br>
-                            📜 Знания: <span id="loot-knowledge">0</span><br>
-                            📦 Ресурсы: <span id="loot-materials">0</span>
+                    
+                    <div class="explore-card" style="padding: 15px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                        <div style="color: #ffbf00; font-size: 16px; margin-bottom: 15px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 1px;">Использующиеся инструменты</div>
+                        <div id="active-tools-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 5px;">
                         </div>
                     </div>
-                    <button id="btn-evacuate" class="hub-btn" style="width:100%; border-color: #ff4444;">Покинуть пещеру</button>
                 </div>
 
                 <div id="explore-main">
-                    <div class="activity-row" data-type="mining">
-                        <div class="activity-info">
-                            <div class="activity-label">
-                                <span class="activity-name">⛏️ ДОБЫЧА</span>
-                                <span class="activity-stats" id="stats-mining">0 / 100 (0%)</span>
-                            </div>
-                            <div class="delta-value" id="delta-mining"></div>
-                            <button class="priority-btn">Приоритет</button>
-                        </div>
-                        <div class="progress-container"><div id="bar-mining" class="progress-fill yellow"></div></div>
+                    <div class="tubes-container" id="tubes-inject-zone" style="flex: 1; overflow-y: auto; padding-right: 15px;">
                     </div>
 
-                    <div class="activity-row" data-type="research">
-                        <div class="activity-info">
-                            <div class="activity-label">
-                                <span class="activity-name">📚 ИЗЫСКАНИЯ</span>
-                                <span class="activity-stats" id="stats-research">0 / 100 (0%)</span>
-                            </div>
-                            <div class="delta-value" id="delta-research"></div>
-                            <button class="priority-btn">Приоритет</button>
-                        </div>
-                        <div class="progress-container"><div id="bar-research" class="progress-fill purple"></div></div>
-                    </div>
-
-                    <div class="activity-row" data-type="construction">
-                        <div class="activity-info">
-                            <div class="activity-label">
-                                <span class="activity-name">🔨 СТРОЙКА</span>
-                                <span class="activity-stats" id="stats-construction">0 / 100 (0%)</span>
-                            </div>
-                            <div class="delta-value" id="delta-construction"></div>
-                            <button class="priority-btn">Приоритет</button>
-                        </div>
-                        <div class="progress-container"><div id="bar-construction" class="progress-fill orange"></div></div>
-                    </div>
-
-                    <div class="activity-row" data-type="scouting">
-                        <div class="activity-info">
-                            <div class="activity-label">
-                                <span class="activity-name">🪔 РАЗВЕДКА</span>
-                                <span class="activity-stats" id="stats-scouting">0 / 100 (0%)</span>
-                            </div>
-                            <div class="delta-value" id="delta-scouting"></div>
-                            <button class="priority-btn">Приоритет</button>
-                        </div>
-                        <div class="progress-container"><div id="bar-scouting" class="progress-fill turquoise"></div></div>
-                    </div>
-
-                    <div id="explore-bottom">
-                        <div style="display: flex; align-items: flex-end; gap: 20px;">
+                    <div id="explore-bottom-panel" class="explore-bottom-actions">
+                        <div class="bottom-action-group" style="align-items: center;">
+                            <button id="btn-evacuate" class="huge-action-btn btn-danger">ПОКИНУТЬ ПЕЩЕРУ</button>
+                            <button id="btn-rest" class="huge-action-btn btn-success">ОТДЫХ (ПРИВАЛ)</button>
                             
-                            <div id="tick-timer-wrap">
-                                <div id="tick-timer-bar"></div>
-                                <span id="tick-label">ЧАС</span>
+                            <div style="position: relative;">
+                                <button id="btn-explore-inv" class="huge-action-btn btn-warning">ИНВЕНТАРЬ</button>
+                                <div id="inv-badge" class="notification-badge hidden" style="position: absolute; top: -10px; right: -10px;">0</div>
+                                <div id="loot-toast-container"></div>
                             </div>
 
-                            <div style="flex-grow: 1;">
-                                <div id="status-meta">
-                                    <span>🕒 ВРЕМЯ: <span id="explore-time">0</span> / <span id="explore-max-time">24</span>ч</span>
-                                    <div id="threat-block">
-                                        <span>⚠️ УГРОЗА: <span id="stats-threat">0 / 100 (0%)</span></span>
-                                        <div class="delta-value" id="delta-threat"></div>
+                            <div style="position: relative;">
+                                <button id="btn-trigger-battle" class="huge-action-btn btn-danger" style="border-color: #ff4444; font-weight: bold; width: 140px;">БИТВА ⚔️</button>
+                                <div id="battle-toast-container" style="position: absolute; bottom: 65px; left: 0; pointer-events: none; z-index: 200; width: 250px;"></div>
+                            </div>
+
+                            <div class="priority-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 320px; margin-left: 10px;">
+                                <button class="prio-grid-btn" data-type="mining">Приоритет ⛏️</button>
+                                <button class="prio-grid-btn" data-type="research">Приоритет 📚</button>
+                                <button class="prio-grid-btn" data-type="construction">Приоритет 🔨</button>
+                                <button class="prio-grid-btn" data-type="scouting">Приоритет 🪔</button>
+                            </div>
+                        </div>
+
+                        <div class="bottom-action-group" style="margin-right: 220px;">
+                            <div style="display: flex; gap: 20px; align-items: flex-end;">
+                                <div class="pace-dropup">
+                                    <span class="pace-dropup-label">Темп работы</span>
+                                    <button class="huge-action-btn btn-gold" id="btn-pace-current" style="width: 140px;">НОРМ</button>
+                                    <div class="pace-dropup-content">
+                                        <button class="pace-select-btn" data-pace="slow">ТИХО</button>
+                                        <button class="pace-select-btn" data-pace="normal">НОРМ</button>
+                                        <button class="pace-select-btn" data-pace="fast">СПЕШКА</button>
                                     </div>
                                 </div>
-                                <div class="progress-container" style="height: 12px; margin-top: 5px;">
-                                    <div id="bar-threat" class="progress-fill red"></div>
-                                </div>
-                                <div class="pace-selector">
-                                    <button class="pace-btn" data-pace="slow">Тихо</button>
-                                    <button class="pace-btn active" data-pace="normal">Норм</button>
-                                    <button class="pace-btn" data-pace="fast">Спешка</button>
+
+                                <div style="position: relative;">
+                                    <div id="pause-indicator" class="hidden pulse-text" style="color: #ff4444; font-size: 18px; font-weight: bold; text-shadow: 2px 2px 4px #000; letter-spacing: 2px; position: absolute; top: -30px; white-space: nowrap;">ОСТАНОВЛЕНО</div>
+                                    <button id="btn-pause" class="huge-action-btn btn-gold" style="width: 150px;">
+                                        <span id="pause-text">ПАУЗА</span>
+                                    </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <span class="time-display-sun">🕒 ВРЕМЯ: <span id="explore-time">0</span> / 12ч</span>
+
+                    <div id="tick-timer-wrap">
+                        <div id="tick-timer-bar"></div>
+                        <span id="tick-label">ЧАС</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="explore-inv-modal" class="hidden interactive modal-overlay" style="z-index: 150;">
+                <div class="modal-container" style="width: 900px; height: 600px; border-color: #ffaa44;">
+                    <div class="modal-header">
+                        <h2 class="text-gold" style="color: #ffaa44; font-size: 28px; margin: 0;">Инвентарь экспедиции</h2>
+                        <button id="explore-inv-close" class="hub-btn btn-danger btn-bold">ЗАКРЫТЬ</button>
+                    </div>
+                    <div style="display: flex; gap: 20px; flex: 1; min-height: 0;">
+                        <div style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid #444; padding: 15px; display: flex; flex-direction: column;">
+                            <h3 style="color: #ccc; margin-top: 0;">Снаряжение (Взято с собой)</h3>
+                            <div id="explore-inv-supplies" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; overflow-y: auto; flex: 1; align-content: start;"></div>
+                        </div>
+                        <div style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid #444; padding: 15px; display: flex; flex-direction: column;">
+                            <h3 style="color: #4affab; margin-top: 0;">Добыча (Найдено в пещере)</h3>
+                            <div id="explore-inv-loot" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; overflow-y: auto; flex: 1; align-content: start;"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="expedition-summary" class="hidden">
-                <div class="summary-content">
-                    <h2 id="summary-title">Экспедиция завершена</h2>
-                    <p id="summary-reason"></p>
-                    <div class="summary-grid">
-                        <div class="summary-section">
-                            <h4>Прогресс:</h4>
-                            <ul id="summary-progress-list"></ul>
+            <div id="expedition-summary" class="hidden interactive modal-overlay" style="z-index: 2100; pointer-events: auto;">
+                <div class="modal-container" style="width: 1250px; height: 850px; display: flex; flex-direction: column; border-color: #ffbf00; padding: 25px;">
+                    <div class="modal-header" style="border-bottom: 1px solid var(--border-main); padding-bottom: 10px; flex-shrink: 0;">
+                        <h2 class="text-gold" style="font-size: 32px; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Отчет об экспедиции</h2>
+                    </div>
+                    
+                    <div style="display: flex; gap: 20px; flex: 1; min-height: 0; margin-top: 15px;">
+                        <div style="flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-height: 0;">
+                            <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                                <h3 style="color:#ffbf00; margin-top:0; font-size:16px; text-transform:uppercase;">Результаты погруженцев:</h3>
+                                <div id="summary-adventurers-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                                </div>
+                            </div>
+
+                            <div style="background: rgba(0,0,0,0.3); border: 1px solid #444; padding: 15px; border-radius: 4px; height: 180px; flex-shrink: 0; min-height: 0; overflow-y: auto;">
+                                <h3 style="color:#ffbf00; margin-top:0; font-size:14px; text-transform:uppercase; margin-bottom: 10px;">Прогресс и вехи биома:</h3>
+                                <div id="summary-progress-details" style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;"></div>
+                            </div>
                         </div>
-                        <div class="summary-section">
-                            <h4>Ресурсы:</h4>
-                            <ul id="summary-loot-list"></ul>
+
+                        <div style="flex: 1.4; display: flex; flex-direction: column; gap: 15px; min-height: 0;">
+                            <div style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid #4affab; padding: 15px; display: flex; flex-direction: column; border-radius: 4px; min-height: 0;">
+                                <h3 style="color:#4affab; margin-top:0; font-size:16px; text-transform:uppercase;">Собранная добыча:</h3>
+                                <div id="summary-loot-filters" style="margin-bottom: 12px;"></div>
+                                <div id="summary-loot-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; overflow-y: auto; flex: 1; align-content: start;"></div>
+                            </div>
+
+                            <div style="background: rgba(0,0,0,0.3); border: 1px solid #ff4444; padding: 12px; border-radius: 4px; height: 100px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+                                <h3 style="color:#ff4444; margin-top:0; font-size:14px; text-transform:uppercase; margin-bottom: 8px;">Истраченные ресурсы:</h3>
+                                <div id="summary-spent-supplies" style="display: flex; flex-wrap: wrap; gap: 6px; align-content: start; flex: 1; overflow-y: auto;"></div>
+                            </div>
                         </div>
                     </div>
-                    <button id="btn-summary-close" class="hub-btn action-btn" style="width: 100%;">Вернуться на базу</button>
+
+                    <div style="margin-top: 20px; text-align: center; flex-shrink: 0; border-top: 1px solid var(--border-main); padding-top: 15px;">
+                        <button id="btn-summary-confirm" class="huge-action-btn btn-success" style="width: 100%;">ВЕРНУТЬСЯ НА БАЗУ</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -190,6 +298,32 @@
                 <div id="log-panel"></div>
             </div>
         </div>
+        <div id="battle-transition-overlay" class="hidden"></div>
+
+        <div id="profile-modal" class="hidden interactive modal-overlay" style="z-index: 9999;">
+            <div class="modal-container" style="width: 500px; height: auto; text-align: center; padding: 25px;">
+                <h3 class="text-gold" style="font-size: 26px; margin-top: 0; margin-bottom: 20px;">Управление экспедициями</h3>
+                <div id="profile-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; max-height: 250px; overflow-y: auto;"></div>
+                <div style="border-top: 1px solid var(--border-main); padding-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                    <span style="font-size: 11px; color:#aaa; text-transform: uppercase;">Начать новую экспедицию:</span>
+                    <input type="text" id="new-profile-name" placeholder="Название отряда..." style="padding: 10px; background: #0a0806; border: 1px solid #555; color: #fff; text-align: center; font-size: 14px;">
+                    <button id="btn-create-profile" class="hub-btn btn-bold" style="text-align: center; border-color: var(--color-success); color: var(--color-success);">Начать игру</button>
+                    <button id="profile-close-btn" class="hub-btn" style="text-align: center; margin-top: 10px; border-color: #ff4444; color: #ff4444;">Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="confirm-modal" class="hidden interactive modal-overlay" style="z-index: 9999;">
+            <div class="modal-container" style="width: 500px; height: auto; border-color: var(--color-gold); text-align: center; justify-content: center; padding: 25px;">
+                <h3 id="confirm-title" class="text-gold" style="font-size: 24px; margin-top: 0;">Подтверждение</h3>
+                <p id="confirm-desc" style="color: #ccc; margin-bottom: 25px; line-height: 1.5; font-size: 14px;"></p>
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <button id="confirm-btn-cancel" class="huge-action-btn" style="width: 140px;">ОТМЕНА</button>
+                    <button id="confirm-btn-yes" class="huge-action-btn btn-danger" style="width: 140px;">ДА</button>
+                </div>
+            </div>
+        </div>
+
     </div>
     
     <script type="module" src="js/main.js"></script>

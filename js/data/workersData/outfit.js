@@ -1,48 +1,57 @@
 export const STARTING_CLOTHES = {
-    "Засаленные лохмотья": {
+    greasyRags: {
+        name: 'Засаленные лохмотья',
         description: "Пахнут сыростью и безнадёгой. Почти не греют, но это лучше, чем ничего.",
         category: ["Маргинал", "Низкорожденный"],
         effect: { hp: 2, stamina: 2 }
     },
-    "Холщовая рубаха и обмотки": {
+    canvasShirt: {
+        name: 'Холщовая рубаха и обмотки',
         description: "Типичная одежда рабочего люда. Грубая ткань, почерневшая от угольной пыли.",
-        category: ["Низкорожденный", "Грязная работа"],
+        category: ["Низкорожденный", "Грязная работа", "Полезный физ. труд", "Опасная среда"],
         effect: { hp: 5, stamina: 5 }
     },
 
-    "Плотный кожаный фартук": {
+    leatherApron: {
+        name: 'Плотный кожаный фартук',
         description: "Защищает от искр горна или брызг жира на бойне. Пахнет дегтем.",
-        category: ["Ремесленник", "Пищевой промысел", "Вредный физ. труд"],
+        category: ["Ремесленник", "Пищевой промысел", "Вредный физ. труд", "Полезный физ. труд", "Опасная среда"],
         effect: { hp: 8, construction: 1, mining: 1 }
     },
-    "Шерстяной кафтан": {
+    woolenCaftan: {
+        name: 'Шерстяной кафтан',
         description: "Добротная одежда горожанина. Хорошо держит тепло в прохладных туннелях.",
         category: ["Общественный", "Ремесленник"],
         effect: { stamina: 10, research: 1 }
     },
-    "Стёганая безрукавка": {
+    sleevelessJacket: {
+        name: 'Стёганая безрукавка',
         description: "Старая поддёвка под доспех, ставшая повседневной одеждой. Немного смягчает удары.",
         category: ["Полезный боев. труд", "Вредный боев. труд"],
         effect: { hp: 10, battle: 1 }
     },
 
-    "Поношенная мантия": {
+    wornRobe: {
+        name: 'Поношенная мантия',
         description: "Длинные полы мешают ходить по лужам, но обилие карманов удобно для свитков.",
         category: ["Полезный умс. труд", "Вредный умс. труд"],
         effect: { research: 2, scouting: 1 }
     },
-    "Бархатный дублет": {
+    velvetDoublet: {
+        name: 'Бархатный дублет',
         description: "Выглядит нелепо в грязи шахт, но напоминает владельцу о его высоком происхождении.",
         category: ["Элита"],
         effect: { stamina: 15, research: 1 }
     },
-    "Дорожный плащ с капюшоном": {
+    travelCloak: {
+        name: 'Дорожный плащ',
         description: "Незаменимая вещь для тех, кто проводит жизнь в переходах между униями.",
         category: ["Изолированный", "Разведка"],
         effect: { stamina: 5, scouting: 2 }
     },
 
-    "Тёмная куртка на завязках": {
+    darkJacket: {
+        name: 'Тёмная куртка на завязках',
         description: "Не стесняет движений и не имеет блестящих пуговиц. Идеально для темноты.",
         category: ["Незаконный"],
         effect: { scouting: 1, battle: 1, stamina: 5 }
@@ -50,7 +59,8 @@ export const STARTING_CLOTHES = {
 };
 
 export const OUTFITS = {
-    "Лёгкий доспех": {
+    lightArmor: {
+        name: 'Лёгкий доспех',
         description: "Обеспечивает базовую защиту, не сковывая движений.",
         levels: {
             1: { hp: 10, battle: 2, atkArmor: 2 },
@@ -59,7 +69,8 @@ export const OUTFITS = {
             4: { hp: 40, battle: 8, atkArmor: 8 }
         }
     },
-    "Средний доспех": {
+    middleArmor: {
+        name: 'Средний доспех',
         description: "Баланс между защитой и мобильностью.",
         levels: {
             1: { hp: 15, battle: 2, atkArmor: 1, defArmor: 1 },
@@ -68,7 +79,8 @@ export const OUTFITS = {
             4: { hp: 45, battle: 8, atkArmor: 4, defArmor: 4 }
         }
     },
-    "Тяжёлый доспех": {
+    heavyArmor: {
+        name: 'Тяжёлый доспех',
         description: "Толстые пластины металла и кости. Весьма тяжел.",
         levels: {
             1: { hp: 10, battle: 2, defArmor: 2 },
@@ -77,7 +89,8 @@ export const OUTFITS = {
             4: { hp: 40, battle: 8, defArmor: 8 }
         }
     },
-    "Роба рудокопа": {
+    minerOutfit: {
+        name: 'Роба рудокопа',
         description: "Прочная рабочая одежда с множеством карманов для инструмента.",
         levels: {
             1: { hp: 5, stamina: 10, mining: 2 },
@@ -86,7 +99,8 @@ export const OUTFITS = {
             4: { hp: 20, stamina: 40, mining: 8 }
         }
     },
-    "Дублет учёного": {
+    scientistOutfit: {
+        name: 'Дублет учёного',
         description: "Защищает от пыли и реагентов, снабжен петлями для свитков.",
         levels: {
             1: { hp: 5, stamina: 10, research: 2 },
@@ -95,7 +109,8 @@ export const OUTFITS = {
             4: { hp: 20, stamina: 40, research: 8 }
         }
     },
-    "Камзол рабочего": {
+    builderOutfit: {
+        name: 'Камзол рабочего',
         description: "Грубая ткань, усиленная кожаными вставками.",
         levels: {
             1: { hp: 5, stamina: 10, construction: 2 },
@@ -104,7 +119,8 @@ export const OUTFITS = {
             4: { hp: 20, stamina: 40, construction: 8 }
         }
     },
-    "Плащ следопыта": {
+    scoutOutfit: {
+        name: 'Плащ следопыта',
         description: "Скрывает силуэт во тьме туннелей.",
         levels: {
             1: { hp: 5, stamina: 10, scouting: 2 },
