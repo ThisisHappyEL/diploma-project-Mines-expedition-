@@ -1,6 +1,6 @@
 import { GameState } from '../../core/GameState.js';
 import { TooltipManager } from './TooltipManager.js';
-import { QUESTS } from '../../data/hubData/QuestsData.js';
+import { QUESTS } from '../../data/hubData/questsData.js';
 import { LOOT_LABELS } from '../../data/workersData/labels.js';
 
 export class QuestManager {
