@@ -812,7 +812,15 @@ export const ExploreScene = {
 
     showSummary(reason) {
         ExpeditionManager.active = false;
-        ExpeditionManager.saveProgressToGameState();
+        
+        if (typeof ExpeditionManager.saveProgressToGameState === 'function') {
+            ExpeditionManager.saveProgressToGameState();
+        } else {
+            GameState.biomeProgress.mining = ExpeditionManager.progress.mining;
+            GameState.biomeProgress.scouting = ExpeditionManager.progress.scouting;
+            GameState.biomeProgress.construction = ExpeditionManager.progress.construction;
+            GameState.biomeProgress.research = ExpeditionManager.progress.research;
+        }
 
         this.currentSummaryReason = reason;
         
@@ -835,7 +843,9 @@ export const ExploreScene = {
         
         const advList = document.getElementById('summary-adventurers-list');
         
-        advList.innerHTML = activeSquadForSummary.map(adv => {
+        const activeSquad = GameState.currentSquad.filter(adv => adv !== null && adv !== undefined);
+        
+        advList.innerHTML = activeSquad.map(adv => {
             const maxHp = window.HubManager.getStat(adv, 'hp');
             const maxStamina = window.HubManager.getStat(adv, 'stamina');
 
@@ -962,8 +972,6 @@ export const ExploreScene = {
         this.renderSummaryLoot();
 
         document.getElementById('btn-summary-confirm').onclick = () => {
-            const activeSquad = GameState.currentSquad.filter(adv => adv !== null && adv !== undefined);
-
             if (reason === "ALL_DEAD") {
                 const deadIds = activeSquad.map(adv => adv.id);
                 GameState.roster = GameState.roster.filter(adv => !deadIds.includes(adv.id));
@@ -997,6 +1005,7 @@ export const ExploreScene = {
             if (window.SaveManager && typeof window.SaveManager.saveGame === 'function') {
                 window.SaveManager.saveGame();
             }
+
             modal.classList.add('hidden');
             SceneManager.changeScene(HubScene);
         };
