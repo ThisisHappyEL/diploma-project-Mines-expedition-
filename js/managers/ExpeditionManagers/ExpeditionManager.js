@@ -55,6 +55,7 @@ export const ExpeditionManager = {
         this.foundItems = [];
 
         GameState.currentSquad.forEach(adv => {
+            if (!adv) return;
             adv.minExpeditionHp = adv.hp;
             adv.minExpeditionStamina = adv.stamina;
             adv.hasEatenThisExpedition = false;

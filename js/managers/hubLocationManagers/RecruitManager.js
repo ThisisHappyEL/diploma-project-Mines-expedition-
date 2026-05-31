@@ -20,6 +20,7 @@ export class RecruitManager {
     static sortDir = null;
 
     static getStat(adv, statName) {
+        if (!adv || !adv.pureStats) return 0;
         let val = adv.pureStats[statName] || 0;
         adv.traits.forEach(t => { if (t.effect && t.effect[statName]) val += t.effect[statName]; });
         if (adv.equipment.body && adv.equipment.body.stats && adv.equipment.body.stats[statName]) val += adv.equipment.body.stats[statName];

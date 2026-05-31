@@ -43,9 +43,9 @@ export class CharacterRenderer {
         // приоритет бороды и волос для капюшона
         let hairSuffix = '';
         if (adv.gender === 'm') {
-            hairSuffix = isHood ? 'BeardForHood' : 'Beard';
+            hairSuffix = isHood ? 'beardforhood' : 'beard';
         } else {
-            hairSuffix = isHood ? 'HairForHood' : 'Hair';
+            hairSuffix = isHood ? 'hairforhood' : 'hair';
         }
 
         const containerStyle = isSlice ? `
@@ -56,9 +56,11 @@ export class CharacterRenderer {
 
         if (isLayered) {
             const sSuffix = hairSuffix;
-            const altSuffix1 = sSuffix.toLowerCase();
-            const altSuffix2 = adv.gender === 'm' ? 'Beard' : 'Hair';
-            const altSuffix3 = altSuffix2.toLowerCase();
+            const altSuffix1 = adv.gender === 'm' 
+                ? (isHood ? 'BeardForHood' : 'Beard') 
+                : (isHood ? 'HairForHood' : 'Hair');
+            const altSuffix2 = adv.gender === 'm' ? 'beard' : 'hair';
+            const altSuffix3 = adv.gender === 'm' ? 'Beard' : 'Hair';
 
             const p1 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${sSuffix}.png`;
             const p2 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix1}.png`;

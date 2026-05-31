@@ -355,7 +355,9 @@ export const ExploreScene = {
             return;
         }
 
-        list.innerHTML = squad.map(adv => {
+        const activeSquad = squad.filter(adv => adv !== null && adv !== undefined);
+
+        list.innerHTML = activeSquad.map(adv => {
             const maxHp = window.HubManager.getStat(adv, 'hp');
             const maxStamina = window.HubManager.getStat(adv, 'stamina');
             const hpPercent = (adv.hp / maxHp) * 100;
@@ -422,24 +424,24 @@ export const ExploreScene = {
 
         requestAnimationFrame(() => {
             document.querySelectorAll('.sq-hp-fill').forEach((el, index) => {
-                const adv = squad[index];
+                const adv = activeSquad[index];
                 if (adv) el.style.width = `${(adv.hp / window.HubManager.getStat(adv, 'hp')) * 100}%`;
             });
             document.querySelectorAll('.sq-hp-ghost').forEach((el, index) => {
-                const adv = squad[index];
+                const adv = activeSquad[index];
                 if (adv) el.style.width = `${(adv.hp / window.HubManager.getStat(adv, 'hp')) * 100}%`;
             });
 
             document.querySelectorAll('.sq-stam-fill').forEach((el, index) => {
-                const adv = squad[index];
+                const adv = activeSquad[index];
                 if (adv) el.style.width = `${(adv.stamina / window.HubManager.getStat(adv, 'stamina')) * 100}%`;
             });
             document.querySelectorAll('.sq-stam-ghost').forEach((el, index) => {
-                const adv = squad[index];
+                const adv = activeSquad[index];
                 if (adv) el.style.width = `${(adv.stamina / window.HubManager.getStat(adv, 'stamina')) * 100}%`;
             });
 
-            squad.forEach(adv => {
+            activeSquad.forEach(adv => {
                 adv.prevHp = adv.hp;
                 adv.prevStamina = adv.stamina;
             });
@@ -832,7 +834,9 @@ export const ExploreScene = {
         modal.classList.remove('hidden');
         
         const advList = document.getElementById('summary-adventurers-list');
-        advList.innerHTML = GameState.currentSquad.map(adv => {
+        const activeSquadForSummary = GameState.currentSquad.filter(adv => adv !== null && adv !== undefined);
+        
+        advList.innerHTML = activeSquadForSummary.map(adv => {
             const maxHp = window.HubManager.getStat(adv, 'hp');
             const maxStamina = window.HubManager.getStat(adv, 'stamina');
 
@@ -842,7 +846,6 @@ export const ExploreScene = {
             const hpPercent = (finalHp / maxHp) * 100;
             const stamPercent = (finalStamina / maxStamina) * 100;
 
-            // Опыт за часы работ, а не отдыха
             let oldHours = adv.expHours || 0;
             let finalHours = oldHours + (reason === "ALL_DEAD" ? 0 : ExpeditionManager.workTimeElapsed);
             let finalLvl = adv.level || 1;
