@@ -834,7 +834,6 @@ export const ExploreScene = {
         modal.classList.remove('hidden');
         
         const advList = document.getElementById('summary-adventurers-list');
-        const activeSquadForSummary = GameState.currentSquad.filter(adv => adv !== null && adv !== undefined);
         
         advList.innerHTML = activeSquadForSummary.map(adv => {
             const maxHp = window.HubManager.getStat(adv, 'hp');
@@ -963,13 +962,15 @@ export const ExploreScene = {
         this.renderSummaryLoot();
 
         document.getElementById('btn-summary-confirm').onclick = () => {
+            const activeSquad = GameState.currentSquad.filter(adv => adv !== null && adv !== undefined);
+
             if (reason === "ALL_DEAD") {
-                const deadIds = GameState.currentSquad.map(adv => adv.id);
+                const deadIds = activeSquad.map(adv => adv.id);
                 GameState.roster = GameState.roster.filter(adv => !deadIds.includes(adv.id));
                 GameState.currentSquad = [];
                 ExpeditionManager.foundItems = [];
             } else {
-                GameState.currentSquad.forEach(adv => {
+                activeSquad.forEach(adv => {
                     adv.hp = adv.minExpeditionHp;
                     adv.stamina = adv.minExpeditionStamina;
                     
@@ -992,6 +993,7 @@ export const ExploreScene = {
 
             GameState.hasFinishedExpedition = true; 
             GameState.expeditionInventory = [];
+
             if (window.SaveManager && typeof window.SaveManager.saveGame === 'function') {
                 window.SaveManager.saveGame();
             }

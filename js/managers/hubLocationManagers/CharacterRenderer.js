@@ -40,12 +40,15 @@ export class CharacterRenderer {
             armor.key === 'travelCloack' || armor.name?.includes('travelCloack')
         );
 
+        const noHoodAsset = (adv.gender === 'm' && [0, 1, 8, 9].includes(safeIdx));
+        const effectiveHood = isHood && !noHoodAsset;
+
         // приоритет бороды и волос для капюшона
         let hairSuffix = '';
         if (adv.gender === 'm') {
-            hairSuffix = isHood ? 'beardforhood' : 'beard';
+            hairSuffix = effectiveHood ? 'beardForHood' : 'beard'; 
         } else {
-            hairSuffix = isHood ? 'hairforhood' : 'hair';
+            hairSuffix = effectiveHood ? 'hairForHood' : 'hair'; 
         }
 
         const containerStyle = isSlice ? `
@@ -57,8 +60,8 @@ export class CharacterRenderer {
         if (isLayered) {
             const sSuffix = hairSuffix;
             const altSuffix1 = adv.gender === 'm' 
-                ? (isHood ? 'BeardForHood' : 'Beard') 
-                : (isHood ? 'HairForHood' : 'Hair');
+                ? (effectiveHood ? 'beardforhood' : 'beard') 
+                : (effectiveHood ? 'hairforhood' : 'hair');
             const altSuffix2 = adv.gender === 'm' ? 'beard' : 'hair';
             const altSuffix3 = adv.gender === 'm' ? 'Beard' : 'Hair';
 
