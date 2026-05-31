@@ -230,7 +230,7 @@ export const ExpeditionManager = {
         const paceFatigueMult = fatigueBal.paceFatigueMultipliers[this.pace] || 1.0;
 
         GameState.currentSquad.forEach(adv => {
-            if (adv.hp <= 0 || adv.stamina <= 0) return; 
+            if (!adv || adv.hp <= 0 || adv.stamina <= 0) return; 
 
             const maxHp = window.HubManager.getStat(adv, 'hp');
             const maxStamina = window.HubManager.getStat(adv, 'stamina');
@@ -317,7 +317,7 @@ export const ExpeditionManager = {
 
     getSquadTotalStats() {
         return GameState.currentSquad.reduce((acc, adv) => {
-            if (adv.hp <= 0 || adv.stamina <= 0) return acc;
+            if (!adv || adv.hp <= 0 || adv.stamina <= 0) return acc;
 
             acc.mining += window.HubManager.getStat(adv, 'mining') || 0;
             acc.scouting += window.HubManager.getStat(adv, 'scouting') || 0;

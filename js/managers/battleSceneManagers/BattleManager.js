@@ -901,6 +901,7 @@ export class BattleManager {
                 if (players === 0) {
                     GameState.isReturningFromBattle = true;
                     GameState.currentSquad.forEach(adv => {
+                        if (!adv) return;
                         adv.hp = 0;
                         adv.stamina = 0;
                         adv.minExpeditionHp = 0;

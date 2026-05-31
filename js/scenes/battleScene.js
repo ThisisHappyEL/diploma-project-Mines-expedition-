@@ -219,7 +219,8 @@ export const BattleScene = {
 
         let activePos = 1;
         GameState.currentSquad.forEach((data) => {
-            if (data.hp <= 0) return; // Смертно уставшие не дерутся
+            if (!data) return;
+            if (data.hp <= 0) return; // Смертно уставшиеся не дерутся
             
             const hero = new Adventurer(data, activePos);
             Object.assign(hero, data);
