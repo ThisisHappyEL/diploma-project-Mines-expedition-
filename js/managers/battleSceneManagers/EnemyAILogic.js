@@ -1,4 +1,4 @@
-import { ENEMY_SKILLS } from '../../data/battleData/EnemySkillLogic.js';
+import { ENEMY_SKILLS } from '../../data/battleData/enemySkillLogic.js';
 
 export const EnemyAILogic = {
     decideEnemyAction(enemy, manager) {

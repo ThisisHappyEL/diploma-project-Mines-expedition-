@@ -1,11 +1,11 @@
 import { EFFECTS } from '../../data/battleData/effects.js';
 import { SkillLogic } from './SkillLogic.js';
-import { ENEMY_SKILLS } from '../../data/battleData/EnemySkillLogic.js';
+import { ENEMY_SKILLS } from '../../data/battleData/enemySkillLogic.js';
 import { Unit } from '../../entities/Unit.js';
 import { GLASS_FOREST_ENCOUNTERS } from '../../data/battleData/enemies.js';
 import { EnemyAILogic } from './EnemyAILogic.js';
 import { GameState } from '../../core/GameState.js';
-import { ExpeditionManager} from '../ExpeditionManagers/ExpeditionManager.js'
+import { ExpeditionManager} from '../ExpeditionManagers/ExpeditionManager.js';
 import { LOOT } from '../../data/expiditionData/lootData.js';
 import { SceneManager } from '../../core/SceneManager.js';
 import { ExploreScene } from '../../scenes/ExploreScene.js';
