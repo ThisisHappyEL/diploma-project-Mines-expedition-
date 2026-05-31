@@ -23,7 +23,9 @@ export const ExpeditionCampManager = {
         const scoutHealCount = Math.floor(ExpeditionManager.progress.scouting / scoutBal.baseHealBoost.interval);
         const activeBasePercentBonus = scoutHealCount * scoutBal.baseHealBoost.percentBonus;
 
-        const sortedSquad = [...squad].sort((a, b) => {
+        const activeSquad = squad.filter(Boolean);
+
+        const sortedSquad = [...activeSquad ].sort((a, b) => {
             const maxA = window.HubManager.getStat(a, 'hp') + window.HubManager.getStat(a, 'stamina');
             const curA = a.hp + a.stamina;
             const maxB = window.HubManager.getStat(b, 'hp') + window.HubManager.getStat(b, 'stamina');
@@ -72,7 +74,7 @@ export const ExpeditionCampManager = {
             }
         });
 
-        squad.forEach(adv => {
+        activeSquad.forEach(adv => {
             const maxHp = window.HubManager.getStat(adv, 'hp');
             const maxStamina = window.HubManager.getStat(adv, 'stamina');
 
