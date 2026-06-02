@@ -53,7 +53,6 @@ export const GLASS_FOREST_ENEMIES = {
     glassMother: {
         id: 'glassMother', name: "Мать стеклороя",
         hp: 120, maxHp: 120, combat: 15, isBoss: true, maxCombo: 8,
-        isBoss: true,
         spriteUrl: 'assets/img/enemies/mother.png',
         spriteVariations: 11, 
         scale: 0.35, 
@@ -93,7 +92,7 @@ export const GLASS_FOREST_ENCOUNTERS = {
         env: 'piezoCrystal',
         units: ['fritta', 'fritta', 'glassSpider', 'amalgamSpider']
     },
-    medium_4: {
+    medium_5: {
         env: 'piezoCrystal',
         units: ['glassSpider', 'glassSpider', 'glassSpider', 'glassSpider']
     },

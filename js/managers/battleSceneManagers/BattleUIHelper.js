@@ -31,14 +31,11 @@ export const BattleUIHelper = {
         let translated = [];
         const NO_SCALE = ['SHUFFLE', 'MOVETARGET', 'MOVESELF', 'REMOVETAUNTALL']; 
 
-        let hasSelf = false;
-        let hasAlly = false;
-
         effectString.split(',').forEach(part => {
             let p = part.trim().replace(':', '-'); 
             
-            if (p.toLowerCase().startsWith('self ')) hasSelf = true;
-            if (p.toLowerCase().startsWith('ally ')) hasAlly = true;
+            if (p.toLowerCase().startsWith('self '));
+            if (p.toLowerCase().startsWith('ally '));
             const cleanPart = p.toLowerCase().replace('self ', '').replace('ally ', '').trim();
 
             const params = cleanPart.split('-');
@@ -54,7 +51,7 @@ export const BattleUIHelper = {
             if (val === 0 && !NO_SCALE.includes(effectId)) return;
 
             const effectBase = EFFECTS[effectId];
-            let text = "";
+            let text;
 
             if (effectId === 'MOVETARGET' || effectId === 'MOVESELF') {
                 const dir = val > 0 ? 'Назад' : 'Вперед';

@@ -1,10 +1,10 @@
 import { GameState } from '../../core/GameState.js';
 import { TooltipManager } from './TooltipManager.js';
 import { swords, spears, hammers, axes, slings, crossbows, bows, arquebuses } from '../../data/battleData/weapon.js';
-import { OUTFITS } from '../../data/workersData/outfit.js';
 import { STAT_NAMES, STAT_DESCRIPTIONS, WEAPON_LABELS, ARMOR_LABELS } from '../../data/workersData/labels.js';
 import { HubManager } from './HubManager.js';
 import { HUB_BALANCE } from '../../data/balanceFiles/hubBalance.js';
+import { TradeUIHelper } from './TradeUIHelper.js';
 
 export class ForgeManager {
     static lastCycle = -1;
@@ -44,134 +44,10 @@ export class ForgeManager {
     static showMaxInvWeapon = false;
     static showMaxInvArmor = false;
 
-    static initArmorDB() {
-        if (Object.keys(this.ARMOR_DB).length > 0) return;
-        for (const [name, data] of Object.entries(OUTFITS)) {
-            this.ARMOR_DB[name] = [];
-            this.filters.invArmor[name] = true;
-            this.filters.shopArmor[name] = true;
-            for (let lvl = 1; lvl <= HUB_BALANCE.forge.maxArmorLevel; lvl++) {
-                if (data.levels && data.levels[lvl]) {
-                    this.ARMOR_DB[name].push({
-                        name: data.name,
-                        type: 'armor',
-                        key: name, 
-                        level: lvl,
-                        description: data.description,
-                        stats: data.levels[lvl],
-                        sprite: 'Нет спрайта'
-                    });
-                }
-            }
-        }
-    }
-
     static itemMatchesTab(item, tab) {
         if (!item) return false;
         if (tab === 'weapon') return item.type === 'weapon';
         return item.type === 'armor' || item.type === 'body' || item.type === 'civil' || !item.type;
-    }
-
-    static toggleAll(filterObj, container) {
-        const keys = Object.keys(filterObj);
-        const anyInactive = keys.some(k => !filterObj[k]);
-        keys.forEach(k => filterObj[k] = anyInactive);
-        this.render(container);
-    }
-
-    static renderFilterHeader(columnDiv, titleText, activeTab, isInv, containerToReRender) {
-        const headerBox = document.createElement('div');
-        headerBox.style.cssText = "display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 15px; width: 100%;";
-
-        const isExpanded = isInv ? this.invExpanded : this.shopExpanded;
-
-        const titleRow = document.createElement('div');
-        titleRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; width: 100%;";
-        
-        const leftSide = document.createElement('div');
-        leftSide.style.display = 'flex';
-        leftSide.style.alignItems = 'center';
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.style.cssText = "background: transparent; border: none; color: var(--color-gold); font-size: 20px; cursor: pointer; margin-right: 12px; padding: 0; line-height: 1;";
-        toggleBtn.innerText = isExpanded ? '▼' : '►';
-        toggleBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (isInv) this.invExpanded = !this.invExpanded;
-            else this.shopExpanded = !this.shopExpanded;
-            this.render(containerToReRender);
-        };
-        leftSide.appendChild(toggleBtn);
-
-        const title = document.createElement('h3');
-        title.style.color = '#ffbf00';
-        title.style.margin = '0';
-        title.innerText = titleText;
-        leftSide.appendChild(title);
-        titleRow.appendChild(leftSide);
-
-        if (isExpanded) {
-            const tabs = document.createElement('div');
-            tabs.className = 'type-tabs';
-            tabs.style.display = 'flex';
-            tabs.style.alignItems = 'center';
-            
-            if (isInv) {
-                const maxBtn = document.createElement('button');
-                const showMax = activeTab === 'weapon' ? this.showMaxInvWeapon : this.showMaxInvArmor;
-                maxBtn.className = `filter-toggle-btn special ${showMax ? 'active' : ''}`;
-                maxBtn.style.marginRight = '12px'; 
-                maxBtn.innerText = '🔒 Максимум';
-                maxBtn.onclick = () => { 
-                    if (activeTab === 'weapon') this.showMaxInvWeapon = !this.showMaxInvWeapon;
-                    else this.showMaxInvArmor = !this.showMaxInvArmor;
-                    this.render(containerToReRender); 
-                };
-                tabs.appendChild(maxBtn);
-            }
-
-            const btnW = document.createElement('button');
-            btnW.className = `type-tab-btn ${activeTab === 'weapon' ? 'active' : ''}`;
-            btnW.innerText = 'Оружие';
-            btnW.onclick = () => { if (isInv) this.tabInv = 'weapon'; else this.tabShop = 'weapon'; this.render(containerToReRender); };
-            
-            const btnA = document.createElement('button');
-            btnA.className = `type-tab-btn ${activeTab === 'armor' ? 'active' : ''}`;
-            btnA.innerText = 'Броня';
-            btnA.onclick = () => { if (isInv) this.tabInv = 'armor'; else this.tabShop = 'armor'; this.render(containerToReRender); };
-
-            tabs.appendChild(btnW);
-            tabs.appendChild(btnA);
-            titleRow.appendChild(tabs);
-        }
-
-        headerBox.appendChild(titleRow);
-
-        if (isExpanded) {
-            const filterGroup = document.createElement('div');
-            filterGroup.className = 'filter-btn-group';
-
-            const filterObj = isInv ? (activeTab === 'weapon' ? this.filters.invWeapon : this.filters.invArmor) : (activeTab === 'weapon' ? this.filters.shopWeapon : this.filters.shopArmor);
-            const labelsObj = activeTab === 'weapon' ? WEAPON_LABELS : ARMOR_LABELS;
-
-            const allBtn = document.createElement('button');
-            allBtn.className = 'filter-toggle-btn';
-            allBtn.style.borderColor = 'var(--border-main)';
-            allBtn.innerText = '⭐ Все';
-            allBtn.onclick = () => this.toggleAll(filterObj, containerToReRender);
-            filterGroup.appendChild(allBtn);
-
-            Object.keys(filterObj).forEach(key => {
-                const btn = document.createElement('button');
-                btn.className = `filter-toggle-btn ${filterObj[key] ? 'active' : ''}`;
-                btn.innerText = labelsObj[key] || key;
-                btn.onclick = () => { filterObj[key] = !filterObj[key]; this.render(containerToReRender); };
-                filterGroup.appendChild(btn);
-            });
-
-            headerBox.appendChild(filterGroup);
-        }
-        columnDiv.appendChild(headerBox);
     }
 
     static render(container) {
@@ -181,19 +57,15 @@ export class ForgeManager {
         }
 
         GameState.initDebugInventory(); 
-        this.initArmorDB();
-
-        (GameState.inventory || []).forEach(item => {
-            if (item && (item.type === 'armor' || item.type === 'body' || item.type === 'civil' || !item.type)) {
-                for (const key of Object.keys(this.ARMOR_DB)) {
-                    if (item.name && item.name.includes(key)) {
-                        item.name = key;
-                        item.type = 'armor';
-                        break;
-                    }
-                }
-            }
-        });
+        
+        TradeUIHelper.initArmorDB(this.ARMOR_DB, HUB_BALANCE.forge.maxArmorLevel);
+        
+        if (Object.keys(this.filters.invArmor).length === 0) {
+            Object.keys(this.ARMOR_DB).forEach(key => {
+                this.filters.invArmor[key] = true;
+                this.filters.shopArmor[key] = true;
+            });
+        }
 
         container.style.display = 'flex'; 
         container.style.width = '100%';
@@ -210,7 +82,27 @@ export class ForgeManager {
         leftCol.className = 'forge-column';
         splitWrapper.appendChild(leftCol);
 
-        this.renderFilterHeader(leftCol, 'Имеющийся арсенал:', this.tabInv, true, container);
+        const showMax = this.tabInv === 'weapon' ? this.showMaxInvWeapon : this.showMaxInvArmor;
+        const extraBtnHTML = `<button class="filter-toggle-btn special-filter-btn ${showMax ? 'active' : ''}" style="margin-right: 12px;">🔒 Максимум</button>`;
+
+        TradeUIHelper.renderFilterHeader({
+            columnDiv: leftCol,
+            titleText: 'Имеющийся арсенал:',
+            activeTab: this.tabInv,
+            isInv: true,
+            isExpanded: this.invExpanded,
+            onToggleExpand: () => { this.invExpanded = !this.invExpanded; this.render(container); },
+            onTabChange: (newTab) => { this.tabInv = newTab; this.render(container); },
+            filterObj: this.tabInv === 'weapon' ? this.filters.invWeapon : this.filters.invArmor,
+            labelsObj: this.tabInv === 'weapon' ? WEAPON_LABELS : ARMOR_LABELS,
+            onFilterToggle: () => this.render(container),
+            extraControlsHTML: extraBtnHTML,
+            onExtraClick: () => {
+                if (this.tabInv === 'weapon') this.showMaxInvWeapon = !this.showMaxInvWeapon;
+                else this.showMaxInvArmor = !this.showMaxInvArmor;
+                this.render(container);
+            }
+        });
 
         const invList = document.createElement('div');
         invList.className = 'forge-column-list';
@@ -226,14 +118,9 @@ export class ForgeManager {
                 if (cat && !currentInvFilters[cat]) return false;
                 
                 const isSessionBought = ForgeManager.sessionBought.has(item.id);
-
-                const currentShowMax = this.tabInv === 'weapon' ? this.showMaxInvWeapon : this.showMaxInvArmor;
-                
-                // исправление проблемы с неотображением предметов 4 уровня из-за невозможности их улучшить
                 if (item.level >= 4 && !currentShowMax && !isSessionBought) return false;
                 return true;
             });
-
 
             if (inventoryItems.length === 0) {
                 invList.innerHTML = '<p style="color:#aaa;">Нет подходящих предметов на складе.</p>';
@@ -245,13 +132,8 @@ export class ForgeManager {
                     const row = document.createElement('div');
                     row.className = 'forge-row refund-row';
                     row.innerHTML = this.getItemRowHTML(item, true, true);
-                    
-                    const btnRefund = row.querySelector('.btn-refund');
-                    if (btnRefund) btnRefund.onclick = (e) => { e.stopPropagation(); this.refundItem(item, container); };
-                    
-                    const btnUpgrade = row.querySelector('.btn-upgrade');
-                    if (btnUpgrade) btnUpgrade.onclick = (e) => { e.stopPropagation(); this.openUpgradeModal(item, container); };
-                    
+                    row.querySelector('.btn-refund').onclick = (e) => { e.stopPropagation(); this.refundItem(item, container); };
+                    row.querySelector('.btn-upgrade').onclick = (e) => { e.stopPropagation(); this.openUpgradeModal(item, container); };
                     invList.appendChild(row);
                 });
 
@@ -259,10 +141,8 @@ export class ForgeManager {
                     const row = document.createElement('div');
                     row.className = 'forge-row';
                     row.innerHTML = this.getItemRowHTML(item, true, false);
-                    
                     const btnUpgrade = row.querySelector('.btn-upgrade');
                     if (btnUpgrade) btnUpgrade.onclick = (e) => { e.stopPropagation(); this.openUpgradeModal(item, container); };
-                    
                     invList.appendChild(row);
                 });
             }
@@ -272,7 +152,18 @@ export class ForgeManager {
         rightCol.className = 'forge-column';
         splitWrapper.appendChild(rightCol);
 
-        this.renderFilterHeader(rightCol, 'Доступно к приобретению:', this.tabShop, false, container);
+        TradeUIHelper.renderFilterHeader({
+            columnDiv: rightCol,
+            titleText: 'Доступно к приобретению:',
+            activeTab: this.tabShop,
+            isInv: false,
+            isExpanded: this.shopExpanded,
+            onToggleExpand: () => { this.shopExpanded = !this.shopExpanded; this.render(container); },
+            onTabChange: (newTab) => { this.tabShop = newTab; this.render(container); },
+            filterObj: this.tabShop === 'weapon' ? this.filters.shopWeapon : this.filters.shopArmor,
+            labelsObj: this.tabShop === 'weapon' ? WEAPON_LABELS : ARMOR_LABELS,
+            onFilterToggle: () => this.render(container)
+        });
 
         const shopList = document.createElement('div');
         shopList.className = 'forge-column-list';
@@ -290,23 +181,19 @@ export class ForgeManager {
                     const row = document.createElement('div');
                     row.className = 'forge-row';
                     row.innerHTML = this.getItemRowHTML(itemDef, false, false);
-                    
                     const btnBuy = row.querySelector('.btn-buy');
                     if (btnBuy) btnBuy.onclick = (e) => { e.stopPropagation(); this.buyItem(itemDef, container); };
-                    
                     shopList.appendChild(row);
                 });
             });
         }
         
-        this.attachSkillTooltips(container);
+        TradeUIHelper.attachSkillTooltips(container);
     }
 
     static getItemRowHTML(item, isUpgrade, isRefund = false) {
         if (!item) return '';
-        const spriteScale = 3.0;
-        const shiftX = '-5px';
-        const shiftY = '10px';
+        const spriteScale = 3.0; const shiftX = '-5px'; const shiftY = '10px';
         const cost = item.level * HUB_BALANCE.forge.basePurchaseCostPerLevel;
         const upgradeCost = item.level * HUB_BALANCE.forge.baseUpgradeCostPerLevel;
         const isArmor = this.itemMatchesTab(item, 'armor');
@@ -316,17 +203,16 @@ export class ForgeManager {
         const folderName = isArmor ? 'outfit/outfitsForSale' : 'weapon/weaponForSale';
         const spritePath = `assets/img/${folderName}/${spriteKey}.png`;
 
-        let actionButtonHTML = '';
+        let actionButtonHTML;
 
         if (isUpgrade) {
-            let upgradeBtnHTML = '';
+            let upgradeBtnHTML;
             let upgradeCostHTML = '';
             
             const maxLevelLimit = isArmor ? HUB_BALANCE.forge.maxArmorLevel : HUB_BALANCE.forge.maxWeaponLevel;
             if (item.level >= maxLevelLimit) {
                 upgradeBtnHTML = `<button class="hub-btn btn-bold" style="padding: 5px 15px; margin: 0; opacity: 0.5;" disabled="true">МАКС.</button>`;
             } else {
-                const currentCandles = GameState.resources.candles;
                 const canAfford = currentCandles >= upgradeCost;
                 const costColor = canAfford ? 'var(--color-gold)' : 'var(--color-danger)';
                 const disabledAttr = canAfford ? '' : 'disabled="true" style="opacity:0.5;"';
@@ -371,17 +257,9 @@ export class ForgeManager {
                 item.skills.forEach(s => {
                     if (!s) return;
                     const skillKey = s.id || s.key || '';
-                    const iconHtml = skillKey 
-                        ? `<img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" onerror="this.style.display='none'">` 
-                        : '';
-                    
+                    const iconHtml = skillKey ? `<img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" onerror="this.style.display='none'">` : '';
                     const ttId = TooltipManager.registerTooltip(HubManager.getSkillTooltipHTML(s, item));
-                    
-                    detailBoxesHtml += `
-                        <div class="fr-skill-box" data-tooltip-id="${ttId}">
-                            ${iconHtml}
-                            <span style="position: absolute; z-index: 0;">${s.name}</span>
-                        </div>`;
+                    detailBoxesHtml += `<div class="fr-skill-box" data-tooltip-id="${ttId}">${iconHtml}<span style="position: absolute; z-index: 0;">${s.name}</span></div>`;
                 });
             }
         }
@@ -392,9 +270,7 @@ export class ForgeManager {
                     ${item.name} 
                     <span style="font-size: 13px; color: var(--color-gold); margin-left: 8px; font-weight: normal;">ур. ${item.level || 1}</span>
                 </div>
-                <div class="fr-action">
-                    ${actionButtonHTML}
-                </div>
+                <div class="fr-action">${actionButtonHTML}</div>
             </div>
             <div class="fr-details">
                 <div class="fr-sprite-box" style="background: transparent !important; background-color: transparent !important; border: none !important; overflow: visible !important; position: relative; flex-shrink:0;">
@@ -409,25 +285,9 @@ export class ForgeManager {
         `;
     }
 
-    static attachSkillTooltips(container) {
-        const skillBoxes = container.querySelectorAll('.fr-skill-box[data-name]');
-        skillBoxes.forEach(box => {
-            const name = box.getAttribute('data-name');
-            const desc = box.getAttribute('data-desc');
-            if (name) {
-                const html = `<b>${name}</b><br><span style='color:#aaa'>${desc}</span>`;
-                const ttId = TooltipManager.registerTooltip(html);
-                box.setAttribute('data-tooltip-id', ttId);
-            }
-        });
-    }
-
     static openUpgradeModal(oldItem, container) {
         TooltipManager.clear();
-        const modalSpriteScale = 3;
-        const modalShiftX = '0px';
-        const modalShiftY = '0px';
-        
+        const modalSpriteScale = 3; const modalShiftX = '0px'; const modalShiftY = '0px';
         let nextLevelVariants = [];
         const isArmor = this.itemMatchesTab(oldItem, 'armor');
         const activeDB = isArmor ? this.ARMOR_DB : this.WEAPONS_DB;
@@ -444,10 +304,7 @@ export class ForgeManager {
         const modal = document.getElementById('upgrade-modal');
         modal.classList.remove('hidden');
         document.getElementById('upgrade-title').innerText = `Улучшение: ${oldItem.name} ➔ Ур. ${oldItem.level + 1}`;
-        
-        document.getElementById('upgrade-close-btn').onclick = () => {
-            modal.classList.add('hidden');
-        };
+        document.getElementById('upgrade-close-btn').onclick = () => modal.classList.add('hidden');
 
         const modalBody = document.getElementById('upgrade-body');
         modalBody.innerHTML = '<div class="upgrade-split-container"></div>';
@@ -476,16 +333,10 @@ export class ForgeManager {
                     if (!s) return;
                     const skillKey = s.id || s.key || '';
                     const ttId = TooltipManager.registerTooltip(HubManager.getSkillTooltipHTML(s, variant));
-                    
                     if (skillKey) {
                         detailsHtml += `
-                            <div class="fr-skill-box skill-icon-only" style="margin:2px;" data-tooltip-id="${ttId}">
-                                <img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" 
-                                     onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='flex';">
-                            </div>
-                            <div class="fr-skill-box text-fallback" style="display:none; margin:2px;" data-tooltip-id="${ttId}">
-                                <span>${s.name}</span>
-                            </div>
+                            <div class="fr-skill-box skill-icon-only" style="margin:2px;" data-tooltip-id="${ttId}"><img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='flex';"></div>
+                            <div class="fr-skill-box text-fallback" style="display:none; margin:2px;" data-tooltip-id="${ttId}"><span>${s.name}</span></div>
                         `;
                     } else {
                         detailsHtml += `<div class="fr-skill-box text-fallback" style="margin:2px;" data-tooltip-id="${ttId}"><span>${s.name}</span></div>`;
@@ -493,23 +344,16 @@ export class ForgeManager {
                 });
             }
 
-            // проверяем баланс и красим ценник, если не хватает
             const canAfford = GameState.resources.candles >= cost;
-            const costColor = canAfford ? 'inherit' : 'var(--color-danger)';
-            const disabledAttr = canAfford ? '' : 'disabled="true" style="opacity:0.5;"';
-
             box.innerHTML = `
-                <div class="fr-sprite-box" style="width: 150px; height: 150px; background: transparent !important; background-color: transparent !important; border: none !important; overflow: visible !important; position: relative; flex-shrink:0;">
+                <div class="fr-sprite-box" style="width: 150px; height: 150px; background: transparent !important; border: none !important; overflow: visible !important; position: relative; flex-shrink:0;">
                     <img src="${spritePath}" onerror="this.parentNode.innerHTML='Нет спрайта'" style="max-width:100%; max-height:100%; transform: translate(${modalShiftX}, ${modalShiftY}) scale(${modalSpriteScale}); transform-origin: center center; object-fit: contain;">
                 </div>
                 <h3>${variant.name}</h3>
                 <div style="color:var(--text-muted); margin-bottom: 5px;">${isArmor ? `Защита: <b style="color:#fff">${variant.stats?.hp || 0} ХП</b>` : `Урон: <b style="color:#fff">${variant.baseDamage}</b>`}</div>
                 ${variant.description ? `<div style="font-size:11px; color:#aaa; font-style:italic; text-align:center; padding: 0 10px; margin-bottom:10px;">${variant.description}</div>` : ''}
-                
-                <div style="width:100%; border-top:1px solid #555; padding-top:10px; margin-bottom:auto;">
-                    <div class="fr-skills-list" style="justify-content:center;">${detailsHtml}</div>
-                </div>
-                <button class="hub-btn action-btn btn-bold btn-upgrade" style="width:100%; margin-top:20px; text-align:center; color:${costColor};" ${disabledAttr}>Улучшить за ${cost} 🕯️</button>
+                <div style="width:100%; border-top:1px solid #555; padding-top:10px; margin-bottom:auto;"><div class="fr-skills-list" style="justify-content:center;">${detailsHtml}</div></div>
+                <button class="hub-btn action-btn btn-bold btn-upgrade" style="width:100%; margin-top:20px; text-align:center; color:${canAfford ? 'inherit' : 'var(--color-danger)'};" ${canAfford ? '' : 'disabled="true"'}>Улучшить за ${cost} 🕯️</button>
             `;
 
             const btn = box.querySelector('.btn-upgrade');
@@ -517,14 +361,11 @@ export class ForgeManager {
             splitContainer.appendChild(box);
         });
 
-        this.attachSkillTooltips(splitContainer);
+        TradeUIHelper.attachSkillTooltips(splitContainer);
     }
 
     static performUpgrade(oldItem, newItemDef, cost, modal, container) {
-        if (GameState.resources.candles < cost) {
-            return;
-        }
-        
+        if (GameState.resources.candles < cost) return;
         GameState.resources.candles -= cost;
         GameState.updateTopBarUI();
 
@@ -541,10 +382,7 @@ export class ForgeManager {
 
     static buyItem(itemDef, container) {
         const cost = itemDef.level * HUB_BALANCE.forge.basePurchaseCostPerLevel;
-        if (GameState.resources.candles < cost) {
-            alert('Не хватает свечей!');
-            return;
-        }
+        if (GameState.resources.candles < cost) { alert('Не хватает свечей!'); return; }
         GameState.resources.candles -= cost;
         GameState.updateTopBarUI();
 

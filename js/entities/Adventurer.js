@@ -1,5 +1,4 @@
 import { Unit } from './Unit.js';
-import { BACKGROUNDS } from '../data/workersData/backgrounds.js';
 
 export class Adventurer extends Unit {
     constructor(data, posIdx) {

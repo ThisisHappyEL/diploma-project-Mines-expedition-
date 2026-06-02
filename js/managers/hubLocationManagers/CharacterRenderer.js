@@ -44,7 +44,7 @@ export class CharacterRenderer {
         const effectiveHood = isHood && !noHoodAsset;
 
         // приоритет бороды и волос для капюшона
-        let hairSuffix = '';
+        let hairSuffix;
         if (adv.gender === 'm') {
             hairSuffix = effectiveHood ? 'beardForHood' : 'beard'; 
         } else {

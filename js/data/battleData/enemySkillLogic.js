@@ -1,5 +1,3 @@
-import { EFFECTS } from './effects.js';
-
 export const ENEMY_SKILLS = {
     frittaAttack: {
         id: 'frittaAttack',

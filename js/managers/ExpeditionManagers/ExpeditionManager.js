@@ -7,6 +7,7 @@ import { EXPEDITION_BALANCE } from '../../data/balanceFiles/expiditionBalance.js
 
 export const ExpeditionManager = {
     active: false,
+    spentItems: [],
     isPaused: false,
     isResting: false,
     battleCompleted: false, 
@@ -28,6 +29,7 @@ export const ExpeditionManager = {
 
     start() {
         this.active = true;
+        this.spentItems = [];
         this.isPaused = false;
         this.isResting = false;
         this.battleCompleted = false; 
@@ -150,7 +152,7 @@ export const ExpeditionManager = {
     },
 
     triggerBattle(context = 'preemptive') {
-        const isWiped = GameState.currentSquad.every(adv => adv.hp <= 0);
+        const isWiped = GameState.currentSquad.every(adv => !adv || adv.hp <= 0);
         if (isWiped) {
             this.active = false;
             import('../../scenes/ExploreScene.js').then(m => {
@@ -192,10 +194,10 @@ export const ExpeditionManager = {
             this.handleWorkTick();
         }
 
-        const isWiped = GameState.currentSquad.every(adv => adv.hp <= 0);
+        const isWiped = GameState.currentSquad.every(adv => !adv || adv.hp <= 0);
         if (isWiped) {
             this.active = false;
-            this.saveProgressToGameState();
+            this.saveProgressToGameState(); 
             import('../../scenes/ExploreScene.js').then(m => {
                 m.ExploreScene.showSummary("ALL_DEAD");
             });

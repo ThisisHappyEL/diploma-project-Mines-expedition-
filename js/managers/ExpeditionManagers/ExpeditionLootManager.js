@@ -1,4 +1,3 @@
-import { GameState } from '../../core/GameState.js';
 import { LOOT } from '../../data/expiditionData/lootData.js';
 import { ExploreScene } from '../../scenes/ExploreScene.js';
 import { EXPEDITION_BALANCE } from '../../data/balanceFiles/expiditionBalance.js';

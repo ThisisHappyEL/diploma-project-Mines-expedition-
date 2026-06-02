@@ -99,7 +99,7 @@ export const SkillLogic = {
         if (['glassMeleeEnhanced', 'glassRangedEnhanced', 'amalgamWound', 'amalgamHeavyDash', 'vitrailMeleeEnhanced', 'vitrailChargeEnhanced', 'motherSpawnGlass'].includes(skill.id)) {
             if (!isPrediction) attacker.modifyEffect('combo', -1);
         }
-        if (skill.id === 'glassWeb', 'motherSpawnAmalgam') {
+        if (['glassWeb', 'motherSpawnAmalgam'].includes(skill.id)) {
             if (!isPrediction) attacker.modifyEffect('combo', -2);
         }
 

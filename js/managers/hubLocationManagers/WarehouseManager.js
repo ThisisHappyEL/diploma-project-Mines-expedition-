@@ -1,9 +1,10 @@
 import { GameState } from '../../core/GameState.js';
 import { TooltipManager } from './TooltipManager.js';
+import { TradeUIHelper } from './TradeUIHelper.js';
 import { ForgeManager } from './ForgeManager.js';
 import { HubManager } from './HubManager.js';
 import { OUTFITS } from '../../data/workersData/outfit.js';
-import { STAT_NAMES, STAT_DESCRIPTIONS, WEAPON_LABELS, ARMOR_LABELS, STAT_LABELS, LOOT_LABELS } from '../../data/workersData/labels.js';
+import { WEAPON_LABELS, ARMOR_LABELS, LOOT_LABELS } from '../../data/workersData/labels.js';
 
 export class WarehouseManager {
     static tab = 'all';
@@ -66,7 +67,7 @@ export class WarehouseManager {
 
     static render(container) {
         GameState.initDebugInventory();
-        ForgeManager.initArmorDB(); 
+        TradeUIHelper.initArmorDB(ForgeManager.ARMOR_DB);
         this.initFilters();         
         
         container.style.display = 'flex'; 
@@ -181,7 +182,6 @@ export class WarehouseManager {
             const isLoot = item.type === 'loot'; 
             const isSupplies = item.type === 'supplies';
             const isArmor = item.type === 'armor' || item.type === 'body' || item.type === 'civil';
-            const isWeapon = item.type === 'weapon';
             const icon = this.getWarehouseIcon(item);
 
             if (isLoot || isSupplies) {

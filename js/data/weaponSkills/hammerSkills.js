@@ -63,7 +63,7 @@ export const HAMMER_SKILLS = {
         damageCoef: 0.7,
         comboOrMarkImproveable: true,
         description: "Удар с пониженным уроном, накладывающий неустойчивость.",
-        level2: { effect: 'instability-1', comboChanges: { effect: 'instability-2, moveTarget: 1' }, },
+        level1: { effect: 'instability-1', comboChanges: { effect: 'instability-2, moveTarget: 1' }, },
         level2: { effect: 'instability-1', comboChanges: { effect: 'instability-2, moveTarget: 1' }, },
         level3: { effect: 'instability-2', comboChanges: { effect: 'instability-3, moveTarget: 2' }, },
         level4: { effect: 'instability-2', comboChanges: { effect: 'instability-3, moveTarget: 2' }, },

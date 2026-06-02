@@ -63,6 +63,10 @@ export const ExpeditionCampManager = {
                     ExploreScene.showLootNotification(consumedFood, true);
                     ExploreScene.showLootNotification(consumedWater, true);
 
+                    if (!ExpeditionManager.spentItems) ExpeditionManager.spentItems = [];
+                    ExpeditionManager.spentItems.push(consumedFood);
+                    ExpeditionManager.spentItems.push(consumedWater);
+
                     const isHigh = foodFoundKey === 'generousRation' && waterFoundKey === 'springWater';
                     const isLow = foodFoundKey === 'scantyRation' || waterFoundKey === 'wasteWater';
                     

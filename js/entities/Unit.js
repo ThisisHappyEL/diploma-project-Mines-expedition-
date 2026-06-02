@@ -166,9 +166,7 @@ export class Unit {
             let e = this.activeEffects[i];
             
             if (e.base.tickOn === triggerType) {
-                if (triggerType === 'hitReceived' && manualTokens.includes(e.base.id)) {
-                } else if (manualTokens.includes(e.base.id)) {
-                } else {
+                if (!manualTokens.includes(e.base.id)) {
                     e.count -= 1;
                 }
             } 
@@ -195,15 +193,15 @@ export class Unit {
     update() {
         if (this.isDead) return;
         const baseX = 960, gap = 220, spacing = 160; 
-        const slotWidth = 80; 
 
         let slotCenterX = baseX;
-        if (this.isEnvironment) {
-            slotCenterX = baseX;
-        } else if (this.side === 'player') {
-            slotCenterX = baseX - gap - ((this.posIdx - 1) * spacing);
-        } else {
-            slotCenterX = baseX + gap + ((this.posIdx - 1) * spacing);
+
+        if (!this.isEnvironment) {
+            if (this.side === 'player') {
+                slotCenterX = baseX - gap - ((this.posIdx - 1) * spacing);
+            } else {
+                slotCenterX = baseX + gap + ((this.posIdx - 1) * spacing);
+            }
         }
 
         this.targetX = slotCenterX - (this.width / 2);

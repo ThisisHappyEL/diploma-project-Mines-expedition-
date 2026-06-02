@@ -151,7 +151,10 @@
                 <p style="color: #aaa; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
                     У вас не осталось свечей, чтобы поддерживать свет и платить авантюристам. За вашу халатность вас приговорили к каторжным работам, а прямо сейчас вас, взяв под руки, выносит стража прочь из клетьевого двора.
                 </p>
-                <button class="hub-btn btn-danger btn-bold" style="font-size: 20px; padding: 15px 30px;" onclick="location.reload()">Начать заново</button>
+                <button class="hub-btn btn-danger btn-bold" style="font-size: 20px; padding: 15px 30px;" 
+                        onclick="window.SaveManager.initNewGame(window.SaveManager.activeProfile); location.reload();">
+                    Начать заново
+                </button>
             </div>
         </div>
 

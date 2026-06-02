@@ -81,8 +81,8 @@ export class SaveManager {
             GameState.selectedBiome = data.selectedBiome || 'glassForest';
             GameState.hasFinishedExpedition = data.hasFinishedExpedition || false;
             GameState.debtCycles = data.debtCycles !== undefined ? data.debtCycles : 3;
+            GameState.isDebugInitialized = true; 
 
-            // Восстанавливаем связи объектов отряда по сохраненным айдишкам из ростера
             GameState.currentSquad = [null, null, null, null];
             if (data.currentSquadIds) {
                 data.currentSquadIds.forEach((id, idx) => {
@@ -165,7 +165,7 @@ export class SaveManager {
             } else {
                 console.warn("⚠️ Сервер вернул ошибку при синхронизации.");
             }
-        } catch (error) {
+        } catch {
             console.log("🔌 Сервер авторизации недоступен. Игра переведена в автономный режим.");
         }
     }
