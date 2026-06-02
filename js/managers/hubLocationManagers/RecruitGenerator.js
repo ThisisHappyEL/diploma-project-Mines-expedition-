@@ -3,12 +3,15 @@ import { BACKGROUNDS } from '../../data/workersData/backgrounds.js';
 import { TRAITS } from '../../data/workersData/traits.js';
 import { NAMES_DATA } from '../../data/workersData/names.js';
 import { STARTING_CLOTHES } from '../../data/workersData/outfit.js';
+import { CharacterRenderer } from './CharacterRenderer.js';
 
 export class RecruitGenerator {
     static generateRecruitsPool(count) {
         const pool = [];
         const bgKeys = Object.keys(BACKGROUNDS);
         
+        const maxVariations = CharacterRenderer.MAX_SPRITE_VARIATIONS || 15; 
+
         const roll = (range) => {
             if (!range || !Array.isArray(range) || range.length < 2) return 10; 
             return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
@@ -21,21 +24,19 @@ export class RecruitGenerator {
 
             const gender = Math.random() > 0.5 ? 'm' : 'f';
             
-            // проверка занятых индексов и текущего ростера
             const usedIndices = new Set();
             GameState.roster.forEach(adv => {
                 if (adv.gender === gender && adv.spriteIndex !== undefined) {
-                    usedIndices.add(adv.spriteIndex);
+                    usedIndices.add(parseInt(adv.spriteIndex));
                 }
             });
             pool.forEach(rec => {
                 if (rec.gender === gender && rec.spriteIndex !== undefined) {
-                    usedIndices.add(rec.spriteIndex);
+                    usedIndices.add(parseInt(rec.spriteIndex));
                 }
             });
 
-            // Подбирание уникальных лиц
-            const maxVariations = 10; 
+            // подбор уникального свободного спрайт лица
             const availableIndices = [];
             for (let idx = 0; idx < maxVariations; idx++) {
                 if (!usedIndices.has(idx)) {

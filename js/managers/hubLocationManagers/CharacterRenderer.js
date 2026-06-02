@@ -16,7 +16,7 @@ export class CharacterRenderer {
         `;
     }
 
-    static MAX_SPRITE_VARIATIONS = 10; 
+    static MAX_SPRITE_VARIATIONS = 15; 
     
     static getAvatarHTML(adv, size = '120px', isSlice = false) {
         if (!adv) return '';

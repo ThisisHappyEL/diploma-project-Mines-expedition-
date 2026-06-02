@@ -6,8 +6,8 @@ export const HUB_BALANCE = {
 
     // --- ТАВЕРНА И НАЙМ (RECRUITS) ---
     tavern: {
-        minRecruitsPerCycle: 3,        // Минимальное количество кандидатов в новый цикл
-        maxRecruitsPerCycle: 4,        // Максимальное количество кандидатов в новый цикл
+        minRecruitsPerCycle: 6,        // Минимальное количество кандидатов в новый цикл
+        maxRecruitsPerCycle: 10,        // Максимальное количество кандидатов в новый цикл
         dismissalSalaryMultiplier: 3,
     },
 
