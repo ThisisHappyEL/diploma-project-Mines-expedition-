@@ -174,6 +174,7 @@ export const BattleUIManager = {
         scene.gameUnits.forEach(u => { if (u.isClicked(scene.mouseX, scene.mouseY)) hFieldU = u; });
         const target = hFieldU || scene.hoverQueueUnit;
 
+        scene.lastHoverTarget = target;
         scene.cachedExpectedDmg = 0;
         scene.cachedExpectedStamina = 0;
         scene.cachedAoeTargets = [];
