@@ -3,12 +3,18 @@
 [![Deploy Status](https://img.shields.io/badge/Deploy-GitHub_Pages-success?style=flat-square&logo=github)](https://thishappyel.github.io/diploma-project-Mines-expedition-/)
 [![Tech Stack](https://img.shields.io/badge/Stack-Vanilla_JS%20|%20Canvas%20|%20Vite-f7df1e?style=flat-square&logo=javascript)](#)
 
+<div>
+  <img src="public/assets/readmi_media/cuteFritta.png" width="165">
+  <img src="public/assets/readmi_media/electricalPiezo.png" width="325">
+  <img src="public/assets/readmi_media/cuteGlassSpider.png" width="135">
+</div>
+
 Браузерная игра-симулятор управления отрядом наемников с экономикой, абстрактным исследованием подземных локаций и тактическими пошаговыми боями. 
 
 🎮 **[ИГРАТЬ ПРЯМО СЕЙЧАС (Live Demo)](https://thisishappyel.github.io/diploma-project-Mines-expedition-/)**
 
 <div align="center">
-  
+  <img src="public/assets/readmi_media/main_screenshot.png" width="700">
 </div>
 
 ---
@@ -36,7 +42,7 @@
 * **Конец цикла:** Когда экспедиция уже была завершена и в текущий цикл вам больше нечем заняться - жмите конец цикла. С вашего баланса валюты спишется жалование работникам, а также оплата постоя в бараках и персонала в лечебнице. *Следите за бюджетом: долг в течение нескольких циклов приведет к поражению!*
 
 <div align="center">
-  
+  <img src="public/assets/readmi_media/hubScene.gif" width="700">
 </div>
 
 ### 2. Экспедиция
@@ -48,7 +54,7 @@
 * **Угроза:** Показатель того, насколько местные обитатели раздражены присутствием посторонних. С определённого этапа (25% заполнения шкалы) Вы можете сами спровоцировать бой. На 50% бой будет неизбежен при попытке покинуть пещеры. Далее предстоящий бой будет расти в сложности.
 
 <div align="center">
-  
+  <img src="public/assets/readmi_media/exploreScene.gif" width="700">
 </div>
 
 ### 3. Тактический бой
@@ -59,7 +65,7 @@
 * * **Тяжесть боя:** Практически каждое действие в бою расходует выносливость погруженца. Если она полностью иссякла вам не останется ничего другого, кроме как пропустить им ход, чтобы перевести дух После исчерпания здоровья погруженец выбывает из боя, но не погибает, если хотя бы кто-то выживет в бою.
 
 <div align="center">
-  
+  <img src="public/assets/readmi_media/battleScene.gif" width="700">
 </div>
 
 ---
@@ -93,3 +99,9 @@
    ```
   
 4. Откройте предоставленный локальный адрес (обычно http://localhost:5173) в браузере.
+
+<div>
+  <img src="public/assets/readmi_media/scaryAmalgam.png" width="150">
+  <img src="public/assets/readmi_media/behgemotMother.png" width="250">
+  <img src="public/assets/readmi_media/collosalVitrai.png" width="225">
+</div>
