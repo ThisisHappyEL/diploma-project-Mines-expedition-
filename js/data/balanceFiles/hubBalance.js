@@ -39,6 +39,11 @@ export const HUB_BALANCE = {
         discountMultiplier: 0.80,      // Множитель цены для акционных вещей со скидкой (0.80 = -20% скидка)
     },
 
+    expedition: {
+        minSquadSize: 1,
+        maxSquadSize: 4,
+    },
+
     leveling: {
         baseHoursForLevel2: 6,         // Сколько часов нужно для 2-го уровня
         hoursMultiplierPerLevel: 2,    // Множитель порога часов для каждого следующего уровня

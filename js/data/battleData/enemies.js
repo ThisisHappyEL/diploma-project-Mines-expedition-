@@ -3,7 +3,7 @@ export const GLASS_FOREST_ENEMIES = {
         id: 'piezoCrystal', name: "Пьезокристалл",
         hp: 40, combat: 0,
         isEnvironment: true,
-        spriteUrl: 'assets/img/enemies/piezo.png',
+        spriteUrl: 'assets/img/enemies/piezo.webp',
         spriteVariations: 9, 
         scale: 0.4,
         skills: [],
@@ -13,7 +13,7 @@ export const GLASS_FOREST_ENEMIES = {
     fritta: {
         id: 'fritta', name: "Фритта",
         hp: 8, maxHp: 8, combat: 3, maxCombo: 0,
-        spriteUrl: 'assets/img/enemies/fritta.png',
+        spriteUrl: 'assets/img/enemies/fritta.webp',
         spriteVariations: 12, 
         scale: 0.275,
         skills: ['frittaAttack'],
@@ -23,7 +23,7 @@ export const GLASS_FOREST_ENEMIES = {
     glassSpider: {
         id: 'glassSpider', name: "Стеклянный паук",
         hp: 36, maxHp: 40, combat: 6, maxCombo: 2,
-        spriteUrl: 'assets/img/enemies/glassSpider.png',
+        spriteUrl: 'assets/img/enemies/glassSpider.webp',
         spriteVariations: 10, 
         scale: 0.315,
         skills: ['glassMelee', 'glassCleave', 'glassRanged', 'glassWeb', 'glassBuffSelf', 'glassBuffAlly', 'glassCare'],
@@ -33,7 +33,7 @@ export const GLASS_FOREST_ENEMIES = {
     amalgamSpider: {
         id: 'amalgamSpider', name: "Паук-амальгама",
         hp: 36, maxHp: 26, combat: 9, maxCombo: 2,
-        spriteUrl: 'assets/img/enemies/amalgam.png',
+        spriteUrl: 'assets/img/enemies/amalgam.webp',
         spriteVariations: 12, 
         scale: 0.265,
         skills: ['amalgamBleed', 'amalgamWound', 'amalgamDash', 'amalgamHeavyDash', 'amalgamFeedSelf'],
@@ -43,7 +43,7 @@ export const GLASS_FOREST_ENEMIES = {
     vitrailSpider: {
         id: 'vitrailSpider', name: "Паук-витраж",
         hp: 60, maxHp: 60, combat: 12, maxCombo: 4,
-        spriteUrl: 'assets/img/enemies/vitrail.png',
+        spriteUrl: 'assets/img/enemies/vitrail.webp',
         spriteVariations: 12, 
         scale: 0.325,
         skills: ['vitrailMeleeBasic', 'vitrailMeleeEnhanced', 'vitrailChargeBasic', 'vitrailChargeEnhanced', 'vitrailRetreat', 'vitrailStealCombo'],
@@ -53,7 +53,7 @@ export const GLASS_FOREST_ENEMIES = {
     glassMother: {
         id: 'glassMother', name: "Мать стеклороя",
         hp: 120, maxHp: 120, combat: 15, isBoss: true, maxCombo: 8,
-        spriteUrl: 'assets/img/enemies/mother.png',
+        spriteUrl: 'assets/img/enemies/mother.webp',
         spriteVariations: 11, 
         scale: 0.35, 
         skills: ['motherMelee', 'motherRanged', 'motherSurge', 'motherVoltage', 'motherSpawnFritta', 'motherSpawnGlass', 'motherSpawnAmalgam', 'motherSpawnVitrail'],

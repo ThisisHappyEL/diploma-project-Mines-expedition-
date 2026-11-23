@@ -35,6 +35,9 @@ export class SaveManager {
             threatLevel: GameState.threatLevel,
             selectedBiome: GameState.selectedBiome,
             hasFinishedExpedition: GameState.hasFinishedExpedition,
+            cycleHoursLeft: GameState.cycleHoursLeft,
+            currentMine: GameState.currentMine,
+            isExpeditionActive: GameState.isExpeditionActive,
             debtCycles: GameState.debtCycles
         };
 
@@ -80,16 +83,21 @@ export class SaveManager {
             GameState.threatLevel = data.threatLevel || 0;
             GameState.selectedBiome = data.selectedBiome || 'glassForest';
             GameState.hasFinishedExpedition = data.hasFinishedExpedition || false;
+            GameState.cycleHoursLeft = data.cycleHoursLeft !== undefined ? data.cycleHoursLeft : 24;
+            GameState.currentMine = data.currentMine || null;
+            GameState.isExpeditionActive = Boolean(data.isExpeditionActive);
             GameState.debtCycles = data.debtCycles !== undefined ? data.debtCycles : 3;
             GameState.isDebugInitialized = true; 
 
-            GameState.currentSquad = [null, null, null, null];
-            if (data.currentSquadIds) {
+            GameState.currentSquad = new Array(9).fill(null);
+            if (Array.isArray(data.currentSquadIds)) {
+                const legacyMap = [5, 4, 3, 0]; // 4x1 -> Тыл/Центр/Фронт
                 data.currentSquadIds.forEach((id, idx) => {
-                    if (id) {
-                        const found = GameState.roster.find(adv => adv.id === id);
-                        if (found) GameState.currentSquad[idx] = found;
-                    }
+                    if (!id) return;
+                    const found = GameState.roster.find(adv => adv.id === id);
+                    if (!found) return;
+                    const targetIdx = data.currentSquadIds.length === 4 ? legacyMap[idx] : idx;
+                    if (targetIdx >= 0 && targetIdx < 9) GameState.currentSquad[targetIdx] = found;
                 });
             }
 
@@ -125,7 +133,7 @@ export class SaveManager {
         GameState.cycle = 1;
         GameState.resources = { candles: 150 };
         GameState.roster = [];
-        GameState.currentSquad = [null, null, null, null];
+        GameState.currentSquad = new Array(9).fill(null);
         GameState.inventory = [];
         GameState.expeditionInventory = [];
         GameState.activeQuests = [];
@@ -134,6 +142,9 @@ export class SaveManager {
         GameState.threatLevel = 0;
         GameState.selectedBiome = 'glassForest';
         GameState.hasFinishedExpedition = false;
+        GameState.cycleHoursLeft = 24;
+        GameState.currentMine = null;
+        GameState.isExpeditionActive = false;
         GameState.debtCycles = 3;
         GameState.isDebugInitialized = false;
 

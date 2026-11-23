@@ -27,7 +27,7 @@ export const ExploreUIHelper = {
         else if (enemyId === 'amalgamSpider') { base = 'assets/img/enemies/amalgam'; vars = 12; }
         else if (enemyId === 'glassSpider') { base = 'assets/img/enemies/glassSpider'; vars = 10; }
         else if (enemyId === 'fritta') { base = 'assets/img/enemies/fritta'; vars = 12; }
-        return `${base}${Math.floor(Math.random() * vars)}.png`;
+        return `${base}${Math.floor(Math.random() * vars)}.webp`;
     },
 
     getHov(adv, stat) {

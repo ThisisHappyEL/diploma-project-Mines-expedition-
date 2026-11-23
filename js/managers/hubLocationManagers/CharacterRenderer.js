@@ -65,20 +65,20 @@ export class CharacterRenderer {
             const altSuffix2 = adv.gender === 'm' ? 'beard' : 'hair';
             const altSuffix3 = adv.gender === 'm' ? 'Beard' : 'Hair';
 
-            const p1 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${sSuffix}.png`;
-            const p2 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix1}.png`;
-            const p3 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix2}.png`;
-            const p4 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix3}.png`;
+            const p1 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${sSuffix}.webp`;
+            const p2 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix1}.webp`;
+            const p3 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix2}.webp`;
+            const p4 = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}${altSuffix3}.webp`;
 
             // у плащей нет задней части
             const hasBack = armor && 
                 armor.key !== 'travelCloak' && armor.key !== 'travelCloack' && 
                 armor.key !== 'scoutOutfit';
 
-            const backOutfitSrc = hasBack ? `assets/img/outfit/${armor.key || armor.name}Back.png` : '';
-            const baseSrc = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}bust.png`;
-            const outfitSrc = armor ? `assets/img/outfit/${armor.key || armor.name}.png` : '';
-            const weaponSrc = weapon ? `assets/img/weapon/${weapon.key || weapon.name}.png` : '';
+            const backOutfitSrc = hasBack ? `assets/img/outfit/${armor.key || armor.name}Back.webp` : '';
+            const baseSrc = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}bust.webp`;
+            const outfitSrc = armor ? `assets/img/outfit/${armor.key || armor.name}.webp` : '';
+            const weaponSrc = weapon ? `assets/img/weapon/${weapon.key || weapon.name}.webp` : '';
 
             return `
                 <div class="char-avatar-layered" style="${containerStyle}">
@@ -90,8 +90,8 @@ export class CharacterRenderer {
                 </div>
             `;
         } else {
-            const fallbackSrc = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}.png`;
-            const weaponSrc = weapon ? `assets/img/weapon/${weapon.key || weapon.name}.png` : '';
+            const fallbackSrc = `assets/img/${folder}/${prefix}${safeIdx}/${prefix}${safeIdx}.webp`;
+            const weaponSrc = weapon ? `assets/img/weapon/${weapon.key || weapon.name}.webp` : '';
 
             return `
                 <div class="char-avatar-layered" style="${containerStyle}">

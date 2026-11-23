@@ -1,77 +1,70 @@
 import { GameState } from '../../core/GameState.js';
 import { SceneManager } from '../../core/SceneManager.js';
-import { EQUIPMENT } from '../../data/workersData/equipment.js';
-import { ExpeditionLootManager } from './ExpeditionLootManager.js';
-import { ExpeditionCampManager } from './ExpeditionCampManager.js';
 import { EXPEDITION_BALANCE } from '../../data/balanceFiles/expiditionBalance.js';
+import { MineGenerator } from './MineGenerator.js';
+import { ExpeditionLootManager } from './ExpeditionLootManager.js';
+import { EQUIPMENT } from '../../data/workersData/equipment.js';
 
 export const ExpeditionManager = {
     active: false,
-    spentItems: [],
-    isPaused: false,
-    isResting: false,
-    battleCompleted: false, 
-    timeElapsed: 0,
+    isPaused: true,
+    focusedCol: null, // null = поровну; 'west' | 'center' | 'east'
     workTimeElapsed: 0,
-    maxTime: EXPEDITION_BALANCE.maxTime,
-    pace: 'normal',
-    priority: null,
-    threat: 0,
-    
-    progress: { mining: 0, scouting: 0, construction: 0, research: 0 },
-    completed: { mining: false, scouting: false, construction: false, research: false },
-    lastDeltas: { mining: 0, scouting: 0, construction: 0, research: 0, threat: 0 },
-    haltReasons: { mining: null, scouting: null, construction: null, research: null },
-    
+    spentItems: [],
     foundItems: [],
+    lastDeltas: { west: 0, center: 0, east: 0 },
     activeToolsCache: { mining: [], scouting: [], construction: [], research: [] },
     catMap: { mining: 'miningMaterials', research: 'researchMaterials', construction: 'buildingMaterials', scouting: 'scoutingMaterials' },
+    foodQuality: ['generousRation', 'normalRation', 'scantyRation'],
+    waterQuality: ['springWater', 'meltSnow', 'wasteWater'],
+
+    ensureMine() {
+        if (!GameState.currentMine) {
+            GameState.currentMine = MineGenerator.createMine(GameState.selectedBiome || 'glassForest');
+        }
+        return GameState.currentMine;
+    },
+
+    getActiveStage(node) {
+        if (!node || !Array.isArray(node.stages)) return null;
+        return node.stages[Math.min(node.currentStageIdx, node.stages.length - 1)] || null;
+    },
 
     start() {
+        const mine = this.ensureMine();
+        GameState.isExpeditionActive = true;
         this.active = true;
-        this.spentItems = [];
-        this.isPaused = false;
-        this.isResting = false;
-        this.battleCompleted = false; 
-        this.timeElapsed = 0;
-        this.workTimeElapsed = 0; // сбрасываем рабочие часы при новой экспедиции
-        this.threat = 0;
+        this.isPaused = true;
+        this.focusedCol = null;
 
-        // загузка прогресса в работах
-        this.progress = { 
-            mining: GameState.biomeProgress.mining || 0, 
-            scouting: GameState.biomeProgress.scouting || 0, 
-            construction: GameState.biomeProgress.construction || 0, 
-            research: GameState.biomeProgress.research || 0 
-        };
+        mine.shiftWorkHours = 0;
+        mine.shiftFoundItems = [];
+        mine.shiftSpentItems = [];
 
-        // какие работы завершены ранее
-        this.completed = { 
-            mining: this.progress.mining >= 100, 
-            scouting: this.progress.scouting >= 100, 
-            construction: this.progress.construction >= 100, 
-            research: this.progress.research >= 100 
-        };
-
-        this.haltReasons = { mining: null, scouting: null, construction: null, research: null };
-        this.foundItems = [];
+        this.workTimeElapsed = 0;
+        this.spentItems = mine.shiftSpentItems;
+        this.foundItems = mine.shiftFoundItems;
+        this.lastDeltas = { west: 0, center: 0, east: 0 };
 
         GameState.currentSquad.forEach(adv => {
             if (!adv) return;
             adv.minExpeditionHp = adv.hp;
             adv.minExpeditionStamina = adv.stamina;
-            adv.hasEatenThisExpedition = false;
-            adv.expeditionHealQuality = 'none';
         });
 
-        this.evaluateTools(); 
+        this.applyScoutingFogReveal(mine.cageDepth);
+        this.evaluateTools();
     },
 
-    saveProgressToGameState() {
-        GameState.biomeProgress.mining = this.progress.mining;
-        GameState.biomeProgress.scouting = this.progress.scouting;
-        GameState.biomeProgress.construction = this.progress.construction;
-        GameState.biomeProgress.research = this.progress.research;
+    resumeFromHub() {
+        const mine = this.ensureMine();
+        this.active = true;
+        this.isPaused = true;
+        this.workTimeElapsed = mine.shiftWorkHours || 0;
+        this.foundItems = mine.shiftFoundItems || (mine.shiftFoundItems = []);
+        this.spentItems = mine.shiftSpentItems || (mine.shiftSpentItems = []);
+        this.applyScoutingFogReveal(mine.cageDepth);
+        this.evaluateTools();
     },
 
     togglePause() {
@@ -79,91 +72,302 @@ export const ExpeditionManager = {
         return this.isPaused;
     },
 
-    toggleRest() {
-        this.isResting = !this.isResting;
-        return this.isResting;
+    toggleFocus(col) {
+        this.focusedCol = this.focusedCol === col ? null : col;
+    },
+
+    getMine() {
+        return this.ensureMine();
+    },
+
+    canDescendTo(depth) {
+        const mine = this.ensureMine();
+        if (depth < 1 || depth > mine.maxDepth) return false;
+        if (depth <= mine.maxReachedDepth) return true;
+        const prevRow = mine.depths[depth - 2];
+        return Boolean(prevRow && prevRow.center.completed);
+    },
+
+    moveCageToDepth(targetDepth) {
+        const mine = this.ensureMine();
+        if (!this.canDescendTo(targetDepth)) return false;
+
+        mine.cageDepth = targetDepth;
+        mine.maxReachedDepth = Math.max(mine.maxReachedDepth, targetDepth);
+        mine.visibleMaxDepth = Math.min(mine.maxDepth, Math.max(mine.visibleMaxDepth, targetDepth + 2));
+        this.focusedCol = null;
+
+        this.applyScoutingFogReveal(targetDepth);
+        return true;
+    },
+
+    revealNode(depth, col) {
+        const mine = this.ensureMine();
+        const row = mine.depths[depth - 1];
+        if (!row || !row[col]) return false;
+        row[col].revealed = true;
+        return true;
+    },
+
+    applyScoutingFogReveal(depth) {
+        const mine = this.ensureMine();
+        const row = mine.depths[depth - 1];
+        if (!row) return;
+
+        row.center.revealed = true;
+        const nextRow = mine.depths[depth];
+        if (nextRow && (row.center.progress >= 50 || row.center.completed)) {
+            nextRow.center.revealed = true;
+        }
+
+        const stats = this.getSquadTotalStats();
+        const hasScoutTools = (GameState.expeditionInventory || []).some(i => i.category === 'scoutingMaterials');
+        const threshold = EXPEDITION_BALANCE.mine?.autoScoutThreshold || 8;
+
+        if (stats.scouting >= threshold || hasScoutTools) {
+            row.west.revealed = true;
+            row.east.revealed = true;
+        }
     },
 
     evaluateTools() {
         const inv = GameState.expeditionInventory || [];
         const activities = ['mining', 'scouting', 'construction', 'research'];
-        
+        const depthPct = ((this.ensureMine().cageDepth - 1) / (EXPEDITION_BALANCE.maxDepth || 10)) * 100;
+
         activities.forEach(type => {
             this.activeToolsCache[type] = [];
             const toolsData = EQUIPMENT[this.catMap[type]];
-            let isHalted = false;
-            let missingName = "";
+            if (!toolsData) return;
 
-            if (toolsData) {
-                for (const [key, t] of Object.entries(toolsData)) {
-                    const itemInInv = inv.find(item => item.key === key);
-                    
-                    if (this.progress[type] >= t.requiredAt) {
-                        if (!itemInInv) {
-                            isHalted = true;
-                            missingName = t.name;
-                            break; 
-                        } else {
-                            if(!this.activeToolsCache[type].some(i => i.key === key)) {
-                                this.activeToolsCache[type].push({ ...t, isBoost: false });
-                            }
-                        }
-                    } else if (this.progress[type] >= t.usefulAt && itemInInv) {
-                        if(!this.activeToolsCache[type].some(i => i.key === key)) {
-                            this.activeToolsCache[type].push({ ...t, isBoost: true });
-                        }
-                    }
+            for (const [key, t] of Object.entries(toolsData)) {
+                const found = inv.find(item => item.key === key);
+                if (found && depthPct >= (t.usefulAt || 0)) {
+                    this.activeToolsCache[type].push({ ...t, isBoost: true });
                 }
-            }
-
-            if (isHalted) {
-                if (this.priority === type) {
-                    this.priority = null;
-                    this.isPaused = true;
-                }
-                this.haltReasons[type] = `Требуется: ${missingName}`;
-            } else {
-                this.haltReasons[type] = null;
             }
         });
     },
 
-    // выбор группы противниках от накопленной сложности
+    getSquadTotalStats() {
+        return GameState.currentSquad.reduce((acc, adv) => {
+            if (!adv || adv.hp <= 0 || adv.stamina <= 0) return acc;
+            acc.battle += window.HubManager.getStat(adv, 'battle') || 0;
+            acc.mining += window.HubManager.getStat(adv, 'mining') || 0;
+            acc.scouting += window.HubManager.getStat(adv, 'scouting') || 0;
+            acc.construction += window.HubManager.getStat(adv, 'construction') || 0;
+            acc.research += window.HubManager.getStat(adv, 'research') || 0;
+            return acc;
+        }, { battle: 0, mining: 0, scouting: 0, construction: 0, research: 0 });
+    },
+
+    tickHubRecoveryHourly() {
+        const divider = EXPEDITION_BALANCE.mine?.hourlyHubHealDivider || 12;
+        const activeIds = new Set(GameState.currentSquad.filter(Boolean).map(a => a.id));
+
+        GameState.roster.forEach(adv => {
+            if (activeIds.has(adv.id)) return;
+            if (adv.isResting) {
+                const maxS = window.HubManager.getStat(adv, 'stamina');
+                const gain = Math.max(1, Math.round((maxS * 0.5) / divider));
+                adv.stamina = Math.min(maxS, adv.stamina + gain);
+                if (adv.stamina >= maxS) adv.isResting = false;
+            }
+            if (adv.isHealing) {
+                const maxH = window.HubManager.getStat(adv, 'hp');
+                const gain = Math.max(1, Math.round((maxH * 0.5) / divider));
+                adv.hp = Math.min(maxH, adv.hp + gain);
+                if (adv.hp >= maxH) adv.isHealing = false;
+            }
+        });
+    },
+
+    autoConsumeSupplies() {
+        const inv = GameState.expeditionInventory || [];
+        if (inv.length === 0) return;
+
+        const mineCfg = EXPEDITION_BALANCE.mine || {};
+        const stamThreshold = mineCfg.autoConsumeStaminaPct ?? 0.35;
+        const hpThreshold = mineCfg.autoConsumeHpPct ?? 0.50;
+        const campBal = EXPEDITION_BALANCE.camp;
+
+        GameState.currentSquad.forEach(adv => {
+            if (!adv || adv.hp <= 0) return;
+            const maxHp = window.HubManager.getStat(adv, 'hp');
+            const maxStam = window.HubManager.getStat(adv, 'stamina');
+
+            const needsFood = (adv.stamina / maxStam <= stamThreshold) || (adv.hp / maxHp <= hpThreshold);
+            if (!needsFood) return;
+
+            const fKey = this.foodQuality.find(k => inv.some(i => i.key === k));
+            const wKey = this.waterQuality.find(k => inv.some(i => i.key === k));
+            if (!fKey || !wKey) return;
+
+            const foodItem = inv.splice(inv.findIndex(i => i.key === fKey), 1)[0];
+            const waterItem = inv.splice(inv.findIndex(i => i.key === wKey), 1)[0];
+            this.spentItems.push(foodItem, waterItem);
+
+            import('../../scenes/ExploreScene.js').then(m => {
+                m.ExploreScene.showLootNotification(foodItem, true);
+                m.ExploreScene.showLootNotification(waterItem, true);
+            });
+
+            const isHigh = fKey === 'generousRation' && wKey === 'springWater';
+            const isLow = fKey === 'scantyRation' || wKey === 'wasteWater';
+
+            const pctBonus = isHigh ? campBal.highQualityHealPercent : (isLow ? campBal.lowQualityHealPercent : campBal.mediumQualityHealPercent);
+            const flatBonus = isHigh ? campBal.highQualityHealFlat : (isLow ? 0 : campBal.mediumQualityHealFlat);
+
+            adv.hp = Math.min(maxHp, adv.hp + Math.round(maxHp * pctBonus) + flatBonus);
+            adv.stamina = Math.min(maxStam, adv.stamina + Math.round(maxStam * pctBonus) + flatBonus);
+        });
+    },
+
+    tick() {
+        if (!this.active || this.isPaused) return 'PAUSED';
+        if ((GameState.cycleHoursLeft ?? 0) <= 0) return 'CYCLE_TIMEOUT';
+
+        const mine = this.ensureMine();
+        GameState.cycleHoursLeft = Math.max(0, (GameState.cycleHoursLeft ?? 24) - 1);
+        this.workTimeElapsed++;
+        mine.shiftWorkHours = this.workTimeElapsed;
+
+        this.tickHubRecoveryHourly();
+        this.handleMineWorkTick();
+        this.autoConsumeSupplies();
+
+        const activeMembers = GameState.currentSquad.filter(Boolean);
+        const allCollapsed = activeMembers.length === 0 || activeMembers.every(adv => adv.hp <= 0 || adv.stamina <= 0);
+
+        if (allCollapsed) {
+            this.active = false;
+            const anyDead = activeMembers.every(adv => adv.hp <= 0);
+            if (this.foundItems.length > 0) {
+                mine.droppedCaches.push({ depth: mine.cageDepth, items: [...this.foundItems] });
+            }
+            import('../../scenes/ExploreScene.js').then(m => {
+                m.ExploreScene.showSummary(anyDead ? 'ALL_DEAD' : 'SHIFT_EXHAUSTED');
+            });
+            return 'DEFEAT';
+        }
+
+        if (GameState.cycleHoursLeft <= 0) {
+            this.active = false;
+            return 'CYCLE_TIMEOUT';
+        }
+
+        return 'SUCCESS';
+    },
+
+    handleMineWorkTick() {
+        this.evaluateTools();
+        const mine = this.ensureMine();
+        const row = mine.depths[mine.cageDepth - 1];
+        if (!row) return;
+
+        const fatigueBal = EXPEDITION_BALANCE.fatigue;
+
+        GameState.currentSquad.forEach(adv => {
+            if (!adv || adv.hp <= 0 || adv.stamina <= 0) return;
+            const maxHp = window.HubManager.getStat(adv, 'hp');
+            const maxStam = window.HubManager.getStat(adv, 'stamina');
+
+            const hpLoss = Math.max(1, Math.round(fatigueBal.baseHpLoss * 0.4 + maxHp * 0.05));
+            const stamLoss = Math.max(1, Math.round(fatigueBal.baseStaminaLoss * 0.6 + maxStam * 0.08));
+
+            adv.hp = Math.max(0, adv.hp - hpLoss);
+            adv.stamina = Math.max(0, adv.stamina - stamLoss);
+            adv.minExpeditionHp = Math.min(adv.minExpeditionHp, adv.hp);
+            adv.minExpeditionStamina = Math.min(adv.minExpeditionStamina, adv.stamina);
+        });
+
+        row.west.revealed = true;
+        row.east.revealed = true;
+
+        const stats = this.getSquadTotalStats();
+        const cols = ['west', 'center', 'east'];
+        const openCols = cols.filter(c => row[c] && !row[c].completed);
+
+        this.lastDeltas = { west: 0, center: 0, east: 0 };
+
+        if (openCols.length > 0) {
+            const focusShare = EXPEDITION_BALANCE.mine?.focusPrimaryShare || 0.70;
+            const hasFocus = this.focusedCol && openCols.includes(this.focusedCol);
+
+            openCols.forEach(col => {
+                const node = row[col];
+                const stage = this.getActiveStage(node);
+                if (!stage) return;
+
+                let share = 1 / openCols.length;
+                if (hasFocus && openCols.length > 1) {
+                    share = col === this.focusedCol ? focusShare : (1 - focusShare) / (openCols.length - 1);
+                }
+
+                const statVal = Math.max(4, stats[stage.stat] || stats.mining || 6);
+                const toolBoost = (this.activeToolsCache[stage.stat]?.length > 0) ? 1.35 : 1.0;
+                const workGain = statVal * 2.2 * share * toolBoost;
+
+                const prevTotalPct = node.progress;
+                stage.workDone = Math.min(stage.workRequired, stage.workDone + workGain);
+                stage.progress = Math.min(100, (stage.workDone / stage.workRequired) * 100);
+
+                if (stage.workDone >= stage.workRequired && !stage.completed) {
+                    stage.completed = true;
+                    this.grantStageLoot(node.depth, stage);
+
+                    if (node.currentStageIdx < node.stages.length - 1) {
+                        node.currentStageIdx++;
+                    } else {
+                        node.completed = true;
+                        if (this.focusedCol === col) this.focusedCol = null;
+
+                        if (col === 'center') {
+                            mine.maxReachedDepth = Math.max(mine.maxReachedDepth, Math.min(mine.maxDepth, mine.cageDepth + 1));
+                            mine.visibleMaxDepth = Math.min(mine.maxDepth, Math.max(mine.visibleMaxDepth, mine.cageDepth + 2));
+                            const nextRow = mine.depths[mine.cageDepth];
+                            if (nextRow) nextRow.center.revealed = true;
+                        }
+                    }
+                }
+
+                const totalDone = node.stages.reduce((s, st) => s + st.workDone, 0);
+                const totalReq = node.stages.reduce((s, st) => s + st.workRequired, 0);
+                node.progress = totalReq > 0 ? Math.min(100, (totalDone / totalReq) * 100) : 100;
+                this.lastDeltas[col] = parseFloat((node.progress - prevTotalPct).toFixed(1));
+            });
+        }
+
+        this.applyScoutingFogReveal(mine.cageDepth);
+    },
+
+    grantStageLoot(depth, stage) {
+        const minP = Math.max(0, (depth - 1) * 10);
+        const maxP = 45 + depth * 35;
+        let cats = ['valuableTypesOfStone', 'minerals'];
+        if (stage.kind === 'research') cats = ['scientificSamples', 'researchResults', 'gases'];
+        else if (stage.kind === 'hazard') cats = ['battlePrey', 'preciousStones'];
+        else if (stage.kind === 'breach' || stage.kind === 'boss') cats = ['minerals', 'preciousStones', 'naturalResources'];
+
+        const count = depth >= 5 ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+            const item = ExpeditionLootManager.getRandomLoot(cats, minP, maxP);
+            if (item) ExpeditionLootManager.giveLoot(item, this);
+        }
+    },
+
     getEncounterComposition() {
-        const val = this.threat;
-        
-        if (val >= 100) {
-            const pool = ['boss_mother', 'boss_mother_2', 'boss_mother_3'];
-            return pool[Math.floor(Math.random() * pool.length)];
-        }
-        
-        if (val >= 90) {
-            const pool = ['hard_1', 'hard_2', 'hard_3', 'hard_4', 'hard_5'];
-            return pool[Math.floor(Math.random() * pool.length)];
-        }
-        
-        if (val >= 70) {
-            const pool = ['medium_1', 'medium_2', 'medium_3', 'medium_4', 'medium_5'];
-            return pool[Math.floor(Math.random() * pool.length)];
-        }
-        
-        const pool = ['easy_1', 'easy_2', 'easy_3'];
-        return pool[Math.floor(Math.random() * pool.length)];
+        const mine = this.ensureMine();
+        const d = mine.cageDepth;
+        if (d >= 10) return 'boss_mother';
+        if (d >= 7) return 'hard_1';
+        if (d >= 4) return 'medium_1';
+        return 'easy_2';
     },
 
     triggerBattle(context = 'preemptive') {
-        const isWiped = GameState.currentSquad.every(adv => !adv || adv.hp <= 0);
-        if (isWiped) {
-            this.active = false;
-            import('../../scenes/ExploreScene.js').then(m => {
-                m.ExploreScene.showSummary("ALL_DEAD");
-            });
-            return;
-        }
-
         this.isPaused = true;
         this.active = false;
-
         GameState.battleContext = context;
         GameState.selectedEncounter = this.getEncounterComposition();
 
@@ -174,158 +378,10 @@ export const ExpeditionManager = {
             overlay.classList.add('active');
         }
 
-        // переход на сцену боя в конце затемнения
         setTimeout(() => {
             import('../../scenes/BattleScene.js').then(m => {
                 SceneManager.changeScene(m.BattleScene);
             });
         }, 1200);
-    },
-
-    tick() {
-        if (!this.active || this.isPaused) return "PAUSED";
-
-        this.timeElapsed++;
-
-        if (this.isResting) {
-            ExpeditionCampManager.handleRestTick(this);
-        } else {
-            this.workTimeElapsed++; // рабочее время за работу, а не отдых
-            this.handleWorkTick();
-        }
-
-        const isWiped = GameState.currentSquad.every(adv => !adv || adv.hp <= 0);
-        if (isWiped) {
-            this.active = false;
-            this.saveProgressToGameState(); 
-            import('../../scenes/ExploreScene.js').then(m => {
-                m.ExploreScene.showSummary("ALL_DEAD");
-            });
-            return "DEFEAT";
-        }
-
-        if (this.timeElapsed >= this.maxTime) {
-            if (this.threat >= 50 && !this.battleCompleted) {
-                this.triggerBattle('forced_timeout');
-                return "SUCCESS";
-            }
-            this.active = false;
-            this.saveProgressToGameState();
-            return "TIMEOUT";
-        }
-
-        return "SUCCESS";
-    },
-
-    handleWorkTick() {
-        this.evaluateTools();
-        const stats = this.getSquadTotalStats();
-        const activities = ['mining', 'scouting', 'construction', 'research'];
-        const fatigueBal = EXPEDITION_BALANCE.fatigue;
-        const constBal = EXPEDITION_BALANCE.construction.milestones;
-        const scoutBal = EXPEDITION_BALANCE.scouting.milestones;
-
-        const fatigueRedCount = Math.floor(this.progress.construction / constBal.fatigueReduction.interval);
-        const activeFlatReduction = fatigueRedCount * constBal.fatigueReduction.flatReduction;
-        const activePercentReduction = fatigueRedCount * constBal.fatigueReduction.percentReduction;
-
-        const paceFatigueMult = fatigueBal.paceFatigueMultipliers[this.pace] || 1.0;
-
-        GameState.currentSquad.forEach(adv => {
-            if (!adv || adv.hp <= 0 || adv.stamina <= 0) return; 
-
-            const maxHp = window.HubManager.getStat(adv, 'hp');
-            const maxStamina = window.HubManager.getStat(adv, 'stamina');
-
-            const finalHpLossPercent = Math.max(0, fatigueBal.maxHpPercentLoss - activePercentReduction);
-            const finalStamLossPercent = Math.max(0, fatigueBal.maxStaminaPercentLoss - activePercentReduction);
-
-            const hpLoss = Math.max(0, Math.round(((fatigueBal.baseHpLoss - activeFlatReduction) + Math.round(maxHp * finalHpLossPercent)) * paceFatigueMult));
-            const stamLoss = Math.max(0, Math.round(((fatigueBal.baseStaminaLoss - activeFlatReduction) + Math.round(maxStamina * finalStamLossPercent)) * paceFatigueMult));
-
-            adv.hp = Math.max(0, adv.hp - hpLoss);
-            adv.stamina = Math.max(0, adv.stamina - stamLoss);
-
-            adv.minExpeditionHp = Math.min(adv.minExpeditionHp, adv.hp);
-            adv.minExpeditionStamina = Math.min(adv.minExpeditionStamina, adv.stamina);
-        });
-
-
-        const speedupCount = Math.floor(this.progress.construction / constBal.speedup.interval);
-        const activeDividerReduction = speedupCount * constBal.speedup.dividerReduction;
-        const activeDivider = Math.max(1, EXPEDITION_BALANCE.progress.baseDivider - activeDividerReduction);
-
-        const progBal = EXPEDITION_BALANCE.progress;
-        activities.forEach(type => {
-            if (this.completed[type] || this.haltReasons[type]) {
-                this.lastDeltas[type] = 0;
-                return; 
-            }
-
-            const sumSkill = stats[type] || 0;
-            const isPrimary = this.priority === type;
-            let efficiency = sumSkill * EXPEDITION_BALANCE.progress.skillModifier;
-
-            const modifiers = progBal.paceModifiers[this.pace];
-            efficiency *= (isPrimary ? modifiers.primary : modifiers.secondary);
-
-            if (this.activeToolsCache[type].some(t => t.isBoost)) {
-                efficiency *= progBal.toolBoostMultiplier; 
-            }
-
-            const gain = parseFloat((efficiency / activeDivider).toFixed(2));
-            this.lastDeltas[type] = gain;
-            
-            const oldProg = this.progress[type];
-            this.progress[type] += gain;
-
-            ExpeditionLootManager.processMilestones(type, oldProg, this.progress[type], this);
-
-            if (this.progress[type] >= 100) {
-                this.progress[type] = 100;
-                this.completed[type] = true;
-                this.priority = null; 
-            }
-        });
-
-        // 3. после боя угроза не растёт
-        if (this.battleCompleted) {
-            this.threat = 0;
-            this.lastDeltas.threat = 0;
-            return;
-        }
-
-        const threatRedCount = Math.floor(this.progress.scouting / scoutBal.threatReduction.interval);
-        const activeThreatReduction = threatRedCount * scoutBal.threatReduction.reduction;
-
-        const threatBal = EXPEDITION_BALANCE.threat;
-        let threatGain = 0;
-        
-        if (this.pace === 'slow') {
-            threatGain = threatBal.slowMin + Math.random() * (threatBal.slowMax - threatBal.slowMin);
-        } else if (this.pace === 'normal') {
-            threatGain = threatBal.normalMin + Math.random() * (threatBal.normalMax - threatBal.normalMin);
-        } else if (this.pace === 'fast') {
-            threatGain = threatBal.fastMin + Math.random() * (threatBal.fastMax - threatBal.fastMin);
-        }
-
-        this.lastDeltas.threat = parseFloat(Math.max(0, threatGain - activeThreatReduction).toFixed(2));
-        this.threat += this.lastDeltas.threat;
-
-        if (this.threat >= 100) {
-            this.triggerBattle('forced_threat');
-        }
-    },
-
-    getSquadTotalStats() {
-        return GameState.currentSquad.reduce((acc, adv) => {
-            if (!adv || adv.hp <= 0 || adv.stamina <= 0) return acc;
-
-            acc.mining += window.HubManager.getStat(adv, 'mining') || 0;
-            acc.scouting += window.HubManager.getStat(adv, 'scouting') || 0;
-            acc.construction += window.HubManager.getStat(adv, 'construction') || 0;
-            acc.research += window.HubManager.getStat(adv, 'research') || 0;
-            return acc;
-        }, { mining: 0, scouting: 0, construction: 0, research: 0 });
     }
 };

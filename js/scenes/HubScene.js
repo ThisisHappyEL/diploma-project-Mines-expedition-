@@ -1,6 +1,8 @@
 import { HUB_LOCATIONS } from '../data/hubData/hubLocations.js';
 import { GameState } from '../core/GameState.js';
 import { HubManager } from '../managers/hubLocationManagers/HubManager.js';
+import { SceneManager } from '../core/SceneManager.js';
+import { ExploreScene } from './ExploreScene.js';
 
 export const HubScene = {
     keydownRef: null,
@@ -15,6 +17,7 @@ export const HubScene = {
         
         GameState.updateTopBarUI();
         this.renderMenu();
+        this.renderExpeditionWidget();
 
         this.loadBackgrounds();
 
@@ -23,6 +26,42 @@ export const HubScene = {
 
         document.addEventListener('keydown', this.keydownRef);
         document.addEventListener('contextmenu', this.contextmenuRef);
+    },
+
+    renderExpeditionWidget() {
+        const widget = document.getElementById('hub-expedition-widget');
+        if (!widget) return;
+
+        if (!GameState.isExpeditionActive || !GameState.currentMine) {
+            widget.classList.add('hidden');
+            widget.innerHTML = '';
+            return;
+        }
+
+        const mine = GameState.currentMine;
+        const squadCount = GameState.currentSquad.filter(Boolean).length;
+        const lootCount = (mine.shiftFoundItems || []).length;
+        const hoursLeft = GameState.cycleHoursLeft ?? 24;
+
+        widget.classList.remove('hidden');
+        widget.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #444; padding-bottom:6px; margin-bottom:8px;">
+                <b style="color:var(--color-gold); font-size:13px; text-transform:uppercase; letter-spacing:0.5px;">🪜 Экспедиция в шахте (Пауза)</b>
+                <span style="color:#4affab; font-size:12px; font-weight:bold;">${hoursLeft}/24ч</span>
+            </div>
+            <div style="font-size:12px; color:#ccc; display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
+                <div>📍 Глубина Клети: <b style="color:#fff;">${mine.cageDepth} / ${mine.maxDepth}</b></div>
+                <div>👥 Бойцов в смене: <b style="color:#fff;">${squadCount}</b></div>
+                <div>📦 Найдено за смену: <b style="color:#b19cd9;">${lootCount} шт.</b></div>
+            </div>
+            <button id="hub-resume-expedition-btn" class="hub-btn action-btn btn-bold" style="width:100%; text-align:center; border-color:var(--color-success); color:var(--color-success);">
+                ⬇️ Вернуться в шахту
+            </button>
+        `;
+
+        document.getElementById('hub-resume-expedition-btn').onclick = () => {
+            SceneManager.changeScene(ExploreScene);
+        };
     },
 
     loadBackgrounds() {
@@ -34,7 +73,7 @@ export const HubScene = {
 
         fileNames.forEach(name => {
             const img = new Image();
-            img.src = `assets/img/backgrounds/hubLocations/${name}.png`;
+            img.src = `assets/img/backgrounds/hubLocations/${name}.webp`;
             this.bgImages[name] = img;
         });
     },
@@ -57,7 +96,7 @@ export const HubScene = {
             let bgHtml = '';
             
             if (id !== 'end_cycle') {
-                bgHtml = `<div class="menu-btn-bg" style="background-image: url('assets/img/backgrounds/hubLocations/${bgName}.png');"></div>`;
+                bgHtml = `<div class="menu-btn-bg" style="background-image: url('assets/img/backgrounds/hubLocations/${bgName}.webp');"></div>`;
             }
 
             btn.innerHTML = `
@@ -200,6 +239,8 @@ export const HubScene = {
         const buildingUI = document.getElementById('building-ui');
         if (buildingUI) buildingUI.classList.add('hidden');
         
+        const w = document.getElementById('hub-expedition-widget');
+        if (w) w.classList.add('hidden');
         document.getElementById('ui-hub').classList.add('hidden');
     }
 };

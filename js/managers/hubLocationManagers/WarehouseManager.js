@@ -195,7 +195,7 @@ export class WarehouseManager {
                 const spriteKey = item.key || item.name;
                 const folderName = isArmor ? 'outfit/outfitsForSale' : 'weapon/weaponForSale';
                 
-                const spritePath = `assets/img/${folderName}/${spriteKey}.png`;
+                const spritePath = `assets/img/${folderName}/${spriteKey}.webp`;
                 const spriteScale = 2.5; 
                 const shiftX = '-5px';
                 const shiftY = '10px';

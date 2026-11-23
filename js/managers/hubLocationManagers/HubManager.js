@@ -93,13 +93,27 @@ export class HubManager {
         return null;
     }
 
-    static openBuilding(locationData) {
+    static openBuilding(locationData, onCloseCallback = null) {
         const ui = document.getElementById('building-ui');
-        ui.classList.remove('hidden'); 
+        ui.classList.remove('hidden');
         document.getElementById('building-title').innerText = locationData.name;
         document.getElementById('building-description').innerText = locationData.description || "";
-        document.getElementById('building-close-btn').onclick = () => ui.classList.add('hidden');
+        document.getElementById('building-close-btn').onclick = () => {
+            ui.classList.add('hidden');
+            if (onCloseCallback) onCloseCallback();
+        };
         this.refreshContent(locationData.id);
+    }
+
+    static openBuildingOverlay(locationData, onCloseCallback = null) {
+        const hubLayer = document.getElementById('ui-hub');
+        hubLayer.classList.remove('hidden');
+        hubLayer.classList.add('hub-overlay-mode');
+        this.openBuilding(locationData, () => {
+            hubLayer.classList.add('hidden');
+            hubLayer.classList.remove('hub-overlay-mode');
+            if (onCloseCallback) onCloseCallback();
+        });
     }
 
     static refreshContent(buildingId) {
@@ -233,8 +247,9 @@ export class HubManager {
             if (adv.isHealing) totalExpenses += COST_PER_HEAL;
         });
 
-        const expStatusText = GameState.hasFinishedExpedition 
-            ? '<span style="color: var(--color-success);">✅ Вылазка была совершена. Погруженцы сделали своё дело.</span>' 
+        const usedHours = (GameState.maxCycleHours || 24) - (GameState.cycleHoursLeft ?? 24);
+        const expStatusText = usedHours > 0
+            ? `<span style="color: var(--color-success);">✅ В шахте отработано <b>${usedHours} ч.</b> Литосферный сдвиг обновит карту недр в новом цикле.</span>`
             : '<span style="color: var(--color-danger);">⚠️ В этом цикле отряд не спускался в клети. День потрачен впустую.</span>';
 
         const currentCandles = GameState.resources.candles;
@@ -300,6 +315,8 @@ export class HubManager {
         }
 
         GameState.hasFinishedExpedition = false;
+        GameState.cycleHoursLeft = GameState.maxCycleHours || 24;
+        GameState.currentMine = null;
 
         if (GameState.activeQuests) {
             for (let i = GameState.activeQuests.length - 1; i >= 0; i--) {

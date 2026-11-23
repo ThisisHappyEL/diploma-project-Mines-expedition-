@@ -163,7 +163,7 @@ export class CharacterDetailsManager {
                 folderName = isCivil ? 'outfit' : 'outfit/outfitsForSale';
             }
             
-            const spritePath = spriteKey ? `assets/img/${folderName}/${spriteKey}.png` : '';
+            const spritePath = spriteKey ? `assets/img/${folderName}/${spriteKey}.webp` : '';
 
             let upgradeBtnHtml = '';
             if (item && item.level < 4) {
@@ -236,7 +236,7 @@ export class CharacterDetailsManager {
             adv.equipment.rightHand.skills.forEach(s => {
                 const skillKey = s.id || s.key || '';
                 const ttId = TooltipManager.registerTooltip(HubTemplates.getSkillTooltipHTML(s, adv.equipment.rightHand));
-                panel.innerHTML += `<div class="cd-skill-square" data-tooltip-id="${ttId}">${skillKey ? `<img src="assets/img/weaponSkillsIcons/${skillKey}.png">` : ''}<span class="cd-skill-text-fallback" style="${skillKey ? 'display:none;' : ''}">${s.name}</span></div>`;
+                panel.innerHTML += `<div class="cd-skill-square" data-tooltip-id="${ttId}">${skillKey ? `<img src="assets/img/weaponSkillsIcons/${skillKey}.webp">` : ''}<span class="cd-skill-text-fallback" style="${skillKey ? 'display:none;' : ''}">${s.name}</span></div>`;
             });
         } else {
             panel.innerHTML = '<span style="color:#555; width:100%; text-align:center;">Оружие не экипировано</span>';
@@ -319,7 +319,7 @@ export class CharacterDetailsManager {
             const isWeapon = item.type === 'weapon';
             const spriteKey = item.key || item.name;
             const folderName = isWeapon ? 'weapon/weaponForSale' : 'outfit/outfitsForSale';
-            const spritePath = `assets/img/${folderName}/${spriteKey}.png`;
+            const spritePath = `assets/img/${folderName}/${spriteKey}.webp`;
             
             const spriteScale = 2.5; const shiftX = '-5px'; const shiftY = '10px';
             const levelBadge = item.level ? `<div style="position: absolute; top: 2px; right: 4px; font-size: 11px; font-weight: bold; color: var(--color-gold); z-index: 5; text-shadow: 1px 1px 2px #000;">${item.level}</div>` : '';

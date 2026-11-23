@@ -44,6 +44,7 @@ export const BattleLootManager = {
             }
         }
 
+        const createdItems = [];
         drops.forEach(key => {
             const itemData = LOOT.battlePrey?.[key];
             if (itemData) {
@@ -55,7 +56,9 @@ export const BattleLootManager = {
                     id: `found_battle_${Date.now()}_${Math.random()}`
                 };
                 ExpeditionManager.foundItems.push(item);
+                createdItems.push(item);
             }
         });
+        return createdItems;
     }
 };

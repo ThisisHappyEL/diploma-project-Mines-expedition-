@@ -55,7 +55,7 @@ export const BiomeManager = {
                 
                 let bgHtml = '';
                 if (biome.id === 'glassForest') {
-                    bgHtml = `<div style="position: absolute; top: 0; right: 0; width: 70%; height: 100%; background: url('assets/img/backgrounds/${biome.id}/${biome.id}0.png') center/cover; -webkit-mask-image: linear-gradient(to right, transparent 0%, black 40%); mask-image: linear-gradient(to right, transparent 0%, black 40%); opacity: 0.5; z-index: 1; transition: 0.2s;"></div>`;
+                    bgHtml = `<div style="position: absolute; top: 0; right: 0; width: 70%; height: 100%; background: url('assets/img/backgrounds/${biome.id}/${biome.id}0.webp') center/cover; -webkit-mask-image: linear-gradient(to right, transparent 0%, black 40%); mask-image: linear-gradient(to right, transparent 0%, black 40%); opacity: 0.5; z-index: 1; transition: 0.2s;"></div>`;
                 }
 
                 const borderCol = isActive ? 'var(--color-gold)' : '#555';
@@ -172,7 +172,7 @@ export const BiomeManager = {
         const getVariationUrl = (enemy) => {
             if (!enemy.spriteVariations || enemy.spriteVariations <= 1) return enemy.spriteUrl;
             const variant = Math.floor(Math.random() * enemy.spriteVariations);
-            return enemy.spriteUrl.replace('.png', `${variant}.png`);
+            return enemy.spriteUrl.replace('.webp', `${variant}.webp`);
         };
 
         body.innerHTML = '';

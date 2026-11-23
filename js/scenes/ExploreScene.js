@@ -2,158 +2,108 @@ import { ExpeditionManager } from '../managers/ExpeditionManagers/ExpeditionMana
 import { GameState } from '../core/GameState.js';
 import { EXPEDITION_BALANCE } from '../data/balanceFiles/expiditionBalance.js';
 import { ExploreUIHelper } from '../managers/ExpeditionManagers/ExploreUIHelper.js';
-import { ExploreTubesHelper } from '../managers/ExpeditionManagers/ExploreTubesHelper.js';
 import { ExpeditionSummaryHelper } from '../managers/ExpeditionManagers/ExpeditionSummaryHelper.js';
+import { CharacterRenderer } from '../managers/hubLocationManagers/CharacterRenderer.js';
+import { HubManager } from '../managers/hubLocationManagers/HubManager.js';
+import { SceneManager } from '../core/SceneManager.js';
+import { HubScene } from './HubScene.js';
+import { SaveManager } from '../managers/SaveManager.js';
 import { TooltipManager } from '../managers/hubLocationManagers/TooltipManager.js';
 
 export const ExploreScene = {
     timer: null,
     msUntilNextTick: 0,
-    TICK_INTERVAL_MS: EXPEDITION_BALANCE.tickIntervalMs,
+    TICK_INTERVAL_MS: EXPEDITION_BALANCE.tickIntervalMs || 3000,
     handleKeyDown: null,
-    handleRightClick: null,
     bgImage: null,
+    draggedSquadIdx: null,
 
     init() {
-        document.getElementById('game-container').addEventListener('contextmenu', e => e.preventDefault());
         document.getElementById('ui-explore').classList.remove('hidden');
-        
+        document.getElementById('top-bar').classList.remove('hidden');
+        GameState.updateTopBarUI();
+
         const bgIndex = Math.floor(Math.random() * 6);
         this.bgImage = new Image();
-        this.bgImage.src = `assets/img/backgrounds/glassForest/glassForest${bgIndex}.png`;
-
-        ExploreUIHelper.applyMaskToButton('btn-evacuate', 'ПОКИНУТЬ ПЕЩЕРУ', 'assets/img/backgrounds/ExploreScene/leave.png');
-        ExploreUIHelper.applyMaskToButton('btn-rest', 'ОТДЫХ (ПРИВАЛ)', 'assets/img/backgrounds/ExploreScene/glassForestRest.png');
-        ExploreUIHelper.applyMaskToButton('btn-explore-inv', 'ИНВЕНТАРЬ', 'assets/img/backgrounds/hubLocations/warehouse.png');
-        this.currentBattleThreatTier = -1;
+        this.bgImage.src = `assets/img/backgrounds/glassForest/glassForest${bgIndex}.webp`;
 
         if (GameState.isReturningFromBattle) {
             GameState.isReturningFromBattle = false;
-            
-            ExploreTubesHelper.renderTubes();
-            ExploreUIHelper.renderSquad();
-            ExploreUIHelper.renderActiveTools();
-            this.setupListeners();
-            this.updateUI(false);
-
-            if (GameState.battleContext === 'forced_timeout') {
-                ExpeditionSummaryHelper.showSummary("Время смены вышло. Отряд с боем прорвался к клети.");
-            } else if (GameState.battleContext === 'forced_threat') {
-                ExpeditionSummaryHelper.showSummary("Критическая угроза! Отразив атаку, отряд экстренно сбежал из шахты.");
-            } else {
-                ExpeditionManager.active = true;
-                ExpeditionManager.isPaused = true; 
-                this.startLoop();
-            }
-        } 
-        else {
+            ExpeditionManager.resumeFromHub();
+        } else if (GameState.isExpeditionActive) {
+            ExpeditionManager.resumeFromHub();
+        } else {
             ExpeditionManager.start();
-            ExpeditionManager.isPaused = true;
             this.msUntilNextTick = this.TICK_INTERVAL_MS;
-            
-            document.getElementById('pause-indicator').classList.remove('hidden');
-            document.getElementById('pause-text').innerText = "ПРОДОЛЖИТЬ";
-
-            ExploreTubesHelper.renderTubes();
-            ExploreUIHelper.renderSquad();
-            ExpeditionManager.evaluateTools();
-            ExploreUIHelper.renderActiveTools();
-
-            this.setupListeners();
-            this.updateUI(false);
-            this.startLoop();
         }
+
+        this.setupListeners();
+        this.updateUI();
+        this.startLoop();
 
         const overlay = document.getElementById('battle-transition-overlay');
         if (overlay) {
             overlay.classList.remove('active');
             setTimeout(() => {
-                if (!overlay.classList.contains('active')) {
-                    overlay.classList.add('hidden');
-                }
+                if (!overlay.classList.contains('active')) overlay.classList.add('hidden');
             }, 1200);
         }
     },
 
     setupListeners() {
-        const pauseBtn = document.getElementById('btn-pause');
-        pauseBtn.onclick = () => {
-            const isNowPaused = ExpeditionManager.togglePause();
-            document.getElementById('pause-indicator').classList.toggle('hidden', !isNowPaused);
-            document.getElementById('pause-text').innerText = isNowPaused ? "ПРОДОЛЖИТЬ" : "ПАУЗА";
+        document.getElementById('btn-pause').onclick = () => {
+            ExpeditionManager.togglePause();
+            this.updatePauseButton();
         };
 
-        const tubesZone = document.getElementById('tubes-inject-zone');
-        if (tubesZone) {
-            tubesZone.onclick = (e) => {
-                const btn = e.target.closest('.prio-tube-btn');
-                if (btn) {
-                    const type = btn.dataset.type;
-                    ExpeditionManager.priority = (ExpeditionManager.priority === type) ? null : type;
-                    this.updateUI(false);
-                }
-            };
-        }
-
-        document.querySelectorAll('.prio-grid-btn').forEach(btn => {
-            btn.onclick = () => {
-                const type = btn.dataset.type;
-                ExpeditionManager.priority = (ExpeditionManager.priority === type) ? null : type;
-                this.updateUI(false);
-            };
-        });
-
-        document.querySelectorAll('.pace-select-btn').forEach(btn => {
-            btn.onclick = () => {
-                ExpeditionManager.pace = btn.dataset.pace;
-                this.updateUI(false);
-            };
-        });
+        document.getElementById('btn-to-hub-pause').onclick = () => {
+            ExpeditionManager.isPaused = true;
+            if ((GameState.cycleHoursLeft ?? 0) > 0) {
+                GameState.cycleHoursLeft = Math.max(0, GameState.cycleHoursLeft - 1);
+            }
+            if (GameState.cycleHoursLeft <= 0) {
+                ExpeditionSummaryHelper.showSummary('CYCLE_TIMEOUT');
+                return;
+            }
+            SaveManager.saveGame();
+            SceneManager.changeScene(HubScene);
+        };
 
         document.getElementById('btn-explore-inv').onclick = () => {
             ExpeditionManager.isPaused = true;
+            this.updatePauseButton();
             document.getElementById('explore-inv-modal').classList.remove('hidden');
-            document.getElementById('inv-badge').classList.add('hidden');
-            document.getElementById('inv-badge').innerText = '0';
-            ExploreUIHelper.renderInventory(); 
+            const badge = document.getElementById('inv-badge');
+            if (badge) {
+                badge.classList.add('hidden');
+                badge.innerText = '0';
+            }
+            ExploreUIHelper.renderInventory();
         };
+
         document.getElementById('explore-inv-close').onclick = () => {
             document.getElementById('explore-inv-modal').classList.add('hidden');
         };
 
-        const restBtn = document.getElementById('btn-rest');
-        restBtn.onclick = () => {
-            const isResting = ExpeditionManager.toggleRest();
-            restBtn.classList.toggle('btn-cleat', isResting);
-            document.getElementById('rest-aura').classList.toggle('active', isResting);
-            this.updateUI(false);
-        };
-
         document.getElementById('btn-evacuate').onclick = () => {
             ExpeditionManager.isPaused = true;
-            const isForced = ExpeditionManager.threat >= 50 && !ExpeditionManager.battleCompleted;
-            const desc = isForced 
-                ? "Внимание! Уровень угрозы слишком высок. При попытке покинуть шахту на ваш отряд НАПАДУТ ЧУДОВИЩА!" 
-                : "Вы действительно хотите досрочно свернуть экспедицию и вернуться в лагерь?";
-                
-            this.showConfirm("Покинуть пещеру", desc, () => {
-                if (isForced) {
-                    ExpeditionManager.triggerBattle();
-                } else {
-                    ExpeditionSummaryHelper.showSummary("Досрочное завершение экспедиции.");
-                }
-            });
+            this.updatePauseButton();
+            const hoursLeft = GameState.cycleHoursLeft ?? 0;
+            this.showConfirm(
+                'Поднять Клеть',
+                `Завершить текущую смену и забрать добычу на поверхность? В сутках останется ${hoursLeft} ч., и вы сможете спустить другую смену.`,
+                () => ExpeditionSummaryHelper.showSummary('Подъём смены на поверхность.')
+            );
         };
 
-        const triggerBattleBtn = document.getElementById('btn-trigger-battle');
-        if (triggerBattleBtn) {
-            triggerBattleBtn.onclick = () => {
-                if (ExpeditionManager.threat >= 25 && !ExpeditionManager.battleCompleted) {
-                    ExpeditionManager.isPaused = true;
-                    this.showConfirm("Превентивная Битва", "Вы действительно хотите начать бой прямо сейчас на собственных условиях?", () => {
-                        ExpeditionManager.triggerBattle();
-                    });
-                }
+        const battleBtn = document.getElementById('btn-trigger-battle');
+        if (battleBtn) {
+            battleBtn.onclick = () => {
+                ExpeditionManager.isPaused = true;
+                this.updatePauseButton();
+                this.showConfirm('Тест старой схватки', 'Запустить тестовый бой на текущей глубине?', () => {
+                    ExpeditionManager.triggerBattle('preemptive');
+                });
             };
         }
 
@@ -162,156 +112,281 @@ export const ExploreScene = {
             if (activeModal) {
                 if (e.code === 'Escape') {
                     e.preventDefault();
-                    if (activeModal.id === 'confirm-modal') {
-                        document.getElementById('confirm-btn-cancel').click();
-                    } else {
-                        const closeBtn = activeModal.querySelector('.btn-danger, #explore-inv-close');
-                        if (closeBtn) closeBtn.click();
-                    }
-                } else if (e.code === 'Enter') {
-                    if (activeModal.id === 'confirm-modal') {
-                        e.preventDefault();
-                        document.getElementById('confirm-btn-yes').click();
-                    }
+                    if (activeModal.id === 'confirm-modal') document.getElementById('confirm-btn-cancel').click();
+                    else activeModal.querySelector('.btn-danger, #explore-inv-close')?.click();
                 }
-                return; 
+                return;
             }
 
             if (e.code === 'Space') {
                 e.preventDefault();
                 document.getElementById('btn-pause')?.click();
-            } else if (e.code === 'Digit1') {
-                document.querySelector('.pace-select-btn[data-pace="slow"]')?.click();
-            } else if (e.code === 'Digit2') {
-                document.querySelector('.pace-select-btn[data-pace="normal"]')?.click();
-            } else if (e.code === 'Digit3') {
-                document.querySelector('.pace-select-btn[data-pace="fast"]')?.click();
-            } else if (e.code === 'Escape') {
-                e.preventDefault();
-                document.getElementById('btn-evacuate')?.click();
-            } else if (e.code === 'KeyR') {
-                document.getElementById('btn-rest')?.click();
-            } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-                e.preventDefault();
-                document.getElementById('btn-explore-inv')?.click();
             }
         };
         window.addEventListener('keydown', this.handleKeyDown);
+    },
 
-        this.handleRightClick = (e) => {
-            if (e.button === 2) { 
-                const activeModal = document.querySelector('.modal-overlay:not(.hidden)');
-                if (activeModal) {
-                    e.preventDefault();
-                    if (activeModal.id === 'confirm-modal') {
-                        document.getElementById('confirm-btn-cancel').click();
-                    } else {
-                        const closeBtn = activeModal.querySelector('.btn-danger, #explore-inv-close');
-                        if (closeBtn) closeBtn.click();
-                    }
-                }
-            }
-        };
-        window.addEventListener('mousedown', this.handleRightClick);
+    updatePauseButton() {
+        const txt = document.getElementById('pause-text');
+        if (txt) txt.innerText = ExpeditionManager.isPaused ? 'ПРОДОЛЖИТЬ' : 'ПАУЗА';
+    },
 
-        const tips = {
-            mining: "<b>ДОБЫЧА</b><br>Скорость извлечения минералов.<br><br><span style='color: #4affab;'>Каждый 1% прогресса приносит случайный недорогой ресурс (руду, камень или смолу).</span>",
-            research: "<b>ИЗЫСКАНИЯ</b><br>Анализ аномалий и сбор полевых данных.<br><br><span style='color: #4affab;'>Каждый 1% прогресса приносит случайный недорогой научный образец (окаменелость, флору или газы).</span>",
-            construction: "<b>СТРОЙКА</b><br>Укрепление сводов.",
-            scouting: "<b>РАЗВЕДКА</b><br>Поиск пути."
-        };
+    renderSquad3x3() {
+        const grid = document.getElementById('explore-squad-3x3');
+        if (!grid) return;
 
-        ExploreTubesHelper.activitiesConfig.forEach(act => {
-            if (act.type === 'threat') return; 
-            const body = document.querySelector(`.tube-row[data-type="${act.type}"] .tube-body`);
-            if (body && tips[act.type]) {
-                const encoded = window.HubManager.getEncodedTooltip(tips[act.type]);
-                const onMove = (e) => {
-                    if (e.target.closest('[data-tooltip-id]') || e.target.closest('.prio-tube-btn')) return;
-                    window.HubManager.showEncodedTooltip(e, encoded);
-                };
-                body.onmousemove = onMove;
-                body.onmouseout = () => window.HubManager.hideTooltip();
-            }
-        });
-
-        const threatTip = "<b>⚠️ УГРОЗА</b><br>Шум и активность злят фауну. При 100% начнется бой.";
-        const encThreat = window.HubManager.getEncodedTooltip(threatTip);
-        const threatBody = document.querySelector('.tube-row[data-type="threat"] .tube-body');
-        if (encThreat && threatBody) {
-            const onThreatMove = (e) => {
-                if (e.target.closest('[data-tooltip-id]')) return;
-                window.HubManager.showEncodedTooltip(e, encThreat);
-            };
-            threatBody.onmousemove = onThreatMove;
-            threatBody.onmouseout = () => window.HubManager.hideTooltip();
+        const stats = ExpeditionManager.getSquadTotalStats();
+        const statsEl = document.getElementById('explore-squad-stats-mini');
+        if (statsEl) {
+            statsEl.innerText = `⚔️${stats.battle}  ⛏️${stats.mining}  📚${stats.research}  🔨${stats.construction}  🪔${stats.scouting}`;
         }
 
-        const btnTips = {
-            'btn-evacuate': "<b>Покинуть пещеру</b><br>Досрочно прервать рабочий день, избежав потенциальных опасностей работы и сражения с чудищами. После этого в течение этого цикла вернуться будет уже нельзя.",
-            'btn-rest': "<b>Отдых (Привал)</b><br>Аннулировать работу, тратя время на восстановление жизненных сил и выносливости. Тратит еду и воду по одной на каждого человека, заметно увеличивая качество отдыха.",
-            'btn-explore-inv': "<b>Инвентарь экспедиции</b><br>Отображает то, что взяли с собой в экспедицию погруженцы, и что они в ходе оной нашли.",
-            'btn-pause': "<b>Пауза / Продолжить</b><br>Приостановить прогресс, чтобы подумать над своими действиями / продолжить работу."
-        };
-        Object.entries(btnTips).forEach(([id, text]) => {
-            const el = document.getElementById(id);
-            if (el) {
-                const tId = TooltipManager.registerTooltip(text);
-                el.setAttribute('data-tooltip-id', tId);
-            }
-        });
+        const colNames = ['Тыл', 'Центр', 'Фронт'];
+        let html = '';
 
-        document.querySelectorAll('.pace-select-btn').forEach(btn => {
-            const pace = btn.dataset.pace;
-            let txt = "";
-            if(pace === 'slow') txt = "<b>ТИХИЙ ТЕМП</b><br>Минимальный риск, но эффективность работы снижена наполовину.";
-            if(pace === 'normal') txt = "<b>ШТАТНЫЙ ТЕМП</b><br>Баланс между скоростью и скрытностью.";
-            if(pace === 'fast') txt = "<b>СПЕШКА</b><br>Двойная эффективность основного дела, но чудовища найдут вас очень быстро.";
-            const enc = window.HubManager.getEncodedTooltip(txt);
-            btn.onmousemove = (e) => window.HubManager.showEncodedTooltip(e, enc);
-            btn.onmouseout = () => window.HubManager.hideTooltip();
+        for (let i = 0; i < 9; i++) {
+            const adv = GameState.currentSquad[i];
+            const colLabel = colNames[i % 3];
+
+            if (!adv) {
+                html += `<div class="exp-grid-cell" data-idx="${i}"><span style="width:100%; text-align:center; font-size:10px; color:#3d352e; text-transform:uppercase; pointer-events:none;">${colLabel}</span></div>`;
+                continue;
+            }
+
+            const maxHp = HubManager.getStat(adv, 'hp');
+            const maxStam = HubManager.getStat(adv, 'stamina');
+            const collapsed = adv.hp <= 0 || adv.stamina <= 0;
+            const col = i % 3;
+            const weapon = adv.equipment?.rightHand;
+            const weaponName = weapon ? weapon.name : 'Кулаки';
+            const cat = weapon ? (HubManager.getLocalCategory(weapon) || weapon.category) : 'fists';
+            const optimalCols = [ 'bows', 'crossbows', 'slings', 'arquebuses' ].includes(cat)
+                ? [0, 1]
+                : (cat === 'spears' ? [1, 2] : [2]);
+            const isSuboptimal = !optimalCols.includes(col);
+            const armor = adv.equipment?.body || adv.civilBody;
+            const ttHtml = `<b>${adv.name}</b> (${colNames[col]})<br>⚔️ ${weaponName}<br>🛡️ ${armor ? armor.name : 'Лохмотья'}${isSuboptimal ? '<br><span style="color:#ffaa44;">⚠️ Оружие неэффективно на этой линии!</span>' : ''}`;
+            const ttId = TooltipManager.registerTooltip(ttHtml);
+
+            html += `
+                <div class="exp-grid-cell occupied ${collapsed ? 'collapsed' : ''}" style="${isSuboptimal ? 'border-color:var(--color-warning);' : ''}" data-idx="${i}" data-tooltip-id="${ttId}" draggable="true">
+                    <div class="exp-face-crop">
+                        <div class="exp-face-crop-inner">
+                            <div style="position:absolute; width:425px; height:425px; top:-40px; left:-190px; pointer-events:none;">
+                                ${CharacterRenderer.getAvatarHTML(adv, '425px', true)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="exp-cell-info">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:bold; color:#fff;">
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${adv.name}</span>
+                            ${isSuboptimal ? '<span style="color:var(--color-warning); margin-left:3px;">⚠️</span>' : ''}
+                        </div>
+                        <div style="font-size:10px; color:#4affab; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">⚔️ ${weaponName}</div>
+                        <div style="display:flex; gap:6px; font-size:10px; font-weight:bold;">
+                            <span style="color:#ff6666;">❤️ ${Math.floor(adv.hp)}/${maxHp}</span>
+                            <span style="color:#4affab;">💨 ${Math.floor(adv.stamina)}/${maxStam}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        grid.innerHTML = html;
+
+        grid.querySelectorAll('.exp-grid-cell').forEach(cell => {
+            const idx = parseInt(cell.getAttribute('data-idx'));
+            const hasUnit = Boolean(GameState.currentSquad[idx]);
+
+            if (hasUnit) {
+                cell.ondragstart = (e) => {
+                    this.draggedSquadIdx = idx;
+                    e.dataTransfer.setData('text/plain', String(idx));
+                    cell.style.opacity = '0.45';
+                };
+                cell.ondragend = () => {
+                    this.draggedSquadIdx = null;
+                    cell.style.opacity = '1';
+                    grid.querySelectorAll('.exp-grid-cell').forEach(c => c.classList.remove('drag-over'));
+                };
+            }
+
+            cell.ondragover = (e) => {
+                e.preventDefault();
+                if (this.draggedSquadIdx !== null && this.draggedSquadIdx !== idx) {
+                    cell.classList.add('drag-over');
+                }
+            };
+            cell.ondragleave = () => {
+                cell.classList.remove('drag-over');
+            };
+            cell.ondrop = (e) => {
+                e.preventDefault();
+                cell.classList.remove('drag-over');
+                const srcIdx = parseInt(e.dataTransfer.getData('text/plain'));
+                if (Number.isNaN(srcIdx) || srcIdx === idx) return;
+
+                const tmp = GameState.currentSquad[idx];
+                GameState.currentSquad[idx] = GameState.currentSquad[srcIdx];
+                GameState.currentSquad[srcIdx] = tmp;
+
+                SaveManager.saveGame();
+                this.renderSquad3x3();
+            };
         });
+    },
+
+    renderShaft() {
+        const body = document.getElementById('shaft-scroll-body');
+        if (!body) return;
+
+        const mine = ExpeditionManager.getMine();
+        const scrollTopPrev = body.scrollTop;
+        body.innerHTML = '';
+
+        for (let d = 1; d <= mine.visibleMaxDepth; d++) {
+            const rowData = mine.depths[d - 1];
+            if (!rowData) continue;
+
+            const isCurrentDepth = mine.cageDepth === d;
+            const isReachable = ExpeditionManager.canDescendTo(d);
+
+            const rowEl = document.createElement('div');
+            rowEl.className = `shaft-depth-row ${isCurrentDepth ? 'active-depth' : ''}`;
+
+            const badge = document.createElement('div');
+            badge.className = 'shaft-depth-badge';
+            badge.innerHTML = `
+                <span style="font-size:11px; color:#888;">ГЛУБИНА</span>
+                <span style="font-size:26px; color:${isCurrentDepth ? 'var(--color-gold)' : '#ccc'};">${d}</span>
+                ${!isCurrentDepth && isReachable ? `<button class="hub-btn move-cage-btn" style="padding:3px 8px; font-size:11px; border-color:var(--color-gold); color:var(--color-gold);">Клеть сюда</button>` : ''}
+            `;
+            const moveBtn = badge.querySelector('.move-cage-btn');
+            if (moveBtn) {
+                moveBtn.onclick = () => {
+                    ExpeditionManager.moveCageToDepth(d);
+                    this.updateUI();
+                };
+            }
+            rowEl.appendChild(badge);
+
+            ['west', 'center', 'east'].forEach(col => {
+                const node = rowData[col];
+                const isCenter = col === 'center';
+                const isFocused = isCurrentDepth && ExpeditionManager.focusedCol === col;
+                const locked = !isCurrentDepth && !(isCenter && isReachable);
+                const stage = ExpeditionManager.getActiveStage(node);
+
+                const card = document.createElement('div');
+                card.className = [
+                    'shaft-node-card',
+                    isCenter ? 'center-lane' : '',
+                    isFocused ? 'focused' : '',
+                    node.completed ? 'completed' : '',
+                    !node.revealed ? 'fogged' : '',
+                    locked ? 'locked' : ''
+                ].filter(Boolean).join(' ');
+
+                const cageTag = (isCenter && isCurrentDepth) ? `<div class="cage-tag">🪜 КЛЕТЬ</div>` : '';
+
+                if (!node.revealed) {
+                    card.innerHTML = `
+                        ${cageTag}
+                        <div style="font-weight:bold; font-size:14px;">❓ Туман войны</div>
+                        <div style="font-size:12px; color:#777;">${isCurrentDepth ? 'Кликните, чтобы разведать штрек, или подождите 1 час.' : 'Скрыто мраком до спуска на ярус.'}</div>
+                    `;
+                } else if (stage) {
+                    const totalStages = node.stages.length;
+                    const stageBadge = totalStages > 1 ? `<span style="color:#888; font-size:11px;">[Этап ${node.currentStageIdx + 1}/${totalStages}]</span>` : '';
+
+                    const statusBadge = node.completed
+                        ? `<span style="color:#4affab; font-size:11px; font-weight:bold;">✅ Выработано</span>`
+                        : (isFocused
+                            ? `<span style="color:var(--color-success); font-size:11px; font-weight:bold;">🎯 В приоритете</span>`
+                            : (isCurrentDepth ? `<span style="color:#aaa; font-size:11px;">Клик — фокус</span>` : (isCenter && isReachable ? `<span style="color:var(--color-gold); font-size:11px;">Спустить клеть</span>` : '')));
+
+                    card.innerHTML = `
+                        ${cageTag}
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                            <b style="font-size:14px; color:#fff;">${stage.icon} ${stage.title} ${stageBadge}</b>
+                            ${statusBadge}
+                        </div>
+                        <div style="font-size:12px; color:#aaa; line-height:1.3;">${stage.desc}</div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+                                <span style="color:#888;">${totalStages > 1 ? 'Этап / Общий прогресс' : 'Прогресс прорыва'}</span>
+                                <b style="color:var(--color-gold);">${Math.floor(stage.progress)}% (${Math.floor(node.progress)}%)</b>
+                            </div>
+                            <div class="shaft-node-bar-bg">
+                                <div class="shaft-node-bar-fill" style="width:${Math.min(100, node.progress)}%;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                card.onclick = () => {
+                    if (isCenter && !isCurrentDepth && isReachable) {
+                        ExpeditionManager.moveCageToDepth(d);
+                        this.updateUI();
+                        return;
+                    }
+                    if (!isCurrentDepth) return;
+                    if (!node.revealed) ExpeditionManager.revealNode(d, col);
+                    if (!node.completed) ExpeditionManager.toggleFocus(col);
+                    this.updateUI();
+                };
+
+                rowEl.appendChild(card);
+            });
+
+            body.appendChild(rowEl);
+        }
+
+        if (mine.visibleMaxDepth < mine.maxDepth) {
+            const remaining = mine.maxDepth - mine.visibleMaxDepth;
+            const teaser = document.createElement('div');
+            teaser.className = 'shaft-deeper-teaser';
+            teaser.innerHTML = `⬇️ ГЛУБЖЕ В НЕДРА (Ещё ${remaining} ярус. скрыто — пробейте центральный проход, чтобы открыть новые глубины)`;
+            body.appendChild(teaser);
+        }
+
+        body.scrollTop = scrollTopPrev;
+    },
+
+    updateUI() {
+        const mine = ExpeditionManager.getMine();
+        document.getElementById('explore-time').innerText = GameState.cycleHoursLeft ?? 24;
+        document.getElementById('explore-depth-val').innerText = `${mine.cageDepth} / ${mine.maxDepth}`;
+        document.getElementById('explore-loot-count').innerText = `${(ExpeditionManager.foundItems || []).length} шт.`;
+        GameState.updateTopBarUI();
+
+        this.updatePauseButton();
+        this.renderSquad3x3();
+        this.renderShaft();
     },
 
     startLoop() {
         let lastTime = performance.now();
         const loop = (now) => {
-            if (!this.timer) return; 
+            if (!this.timer) return;
             const dt = now - lastTime;
             lastTime = now;
-            
-            const pauseText = document.getElementById('pause-text');
-            if (pauseText) {
-                if (ExpeditionManager.isPaused && pauseText.innerText !== "ПРОДОЛЖИТЬ") {
-                    document.getElementById('pause-indicator').classList.remove('hidden');
-                    pauseText.innerText = "ПРОДОЛЖИТЬ";
-                } else if (!ExpeditionManager.isPaused && pauseText.innerText !== "ПАУЗА") {
-                    document.getElementById('pause-indicator').classList.add('hidden');
-                    pauseText.innerText = "ПАУЗА";
-                }
-            }
-            
+
             if (!ExpeditionManager.isPaused && ExpeditionManager.active) {
                 this.msUntilNextTick -= dt;
-                
-                const percent = Math.max(0, 100 - (this.msUntilNextTick / this.TICK_INTERVAL_MS * 100));
-                const timerBar = document.getElementById('tick-timer-bar');
-                if (timerBar) {
-                    const radius = (percent / 100) * 150;
-                    timerBar.style.clipPath = `circle(${radius}% at 100% 100%)`;
+                const fillEl = document.getElementById('pause-tick-fill');
+                if (fillEl) {
+                    const pct = Math.max(0, Math.min(100, (1 - this.msUntilNextTick / this.TICK_INTERVAL_MS) * 100));
+                    fillEl.style.width = `${pct}%`;
                 }
-                
                 if (this.msUntilNextTick <= 0) {
                     this.msUntilNextTick = this.TICK_INTERVAL_MS;
+                    if (fillEl) fillEl.style.width = '0%';
                     const status = ExpeditionManager.tick();
-                    if (status === "TIMEOUT") {
-                        if (ExpeditionManager.threat >= 50 && !ExpeditionManager.battleCompleted) {
-                            ExpeditionManager.triggerBattle();
-                        } else {
-                            ExpeditionSummaryHelper.showSummary("Время смены подошло к концу.");
-                        }
-                    } else {
-                        this.updateUI(true);
+                    if (status === 'CYCLE_TIMEOUT') {
+                        ExpeditionSummaryHelper.showSummary('CYCLE_TIMEOUT');
+                    } else if (status === 'SUCCESS') {
+                        this.updateUI();
                     }
                 }
             }
@@ -324,7 +399,7 @@ export const ExploreScene = {
         document.getElementById('confirm-title').innerText = title;
         document.getElementById('confirm-desc').innerText = desc;
         document.getElementById('confirm-modal').classList.remove('hidden');
-        
+
         document.getElementById('confirm-btn-yes').onclick = () => {
             document.getElementById('confirm-modal').classList.add('hidden');
             onYes();
@@ -332,35 +407,6 @@ export const ExploreScene = {
         document.getElementById('confirm-btn-cancel').onclick = () => {
             document.getElementById('confirm-modal').classList.add('hidden');
         };
-    },
-
-    draw(ctx, canvas) {
-        ctx.fillStyle = "#0a0c10"; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        if (this.bgImage && this.bgImage.complete) {
-            ctx.drawImage(this.bgImage, 0, 0, canvas.width, canvas.height);
-            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grad.addColorStop(0, "rgba(10, 8, 6, 0.65)");
-            grad.addColorStop(1, "rgba(10, 8, 6, 0.85)");
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-    },
-
-    updateUI(showAnims = false) {
-        if (showAnims) {
-            ExploreUIHelper.renderSquad();
-            ExploreUIHelper.renderActiveTools();
-        }
-
-        ExploreTubesHelper.updateTubesUI(
-            this.currentBattleThreatTier,
-            (newTier, enemyId) => {
-                this.currentBattleThreatTier = newTier;
-                ExploreUIHelper.applyMaskToButton('btn-trigger-battle', 'БИТВА ⚔️', null, enemyId);
-            }
-        );
     },
 
     showSummary(reason) {
@@ -371,12 +417,21 @@ export const ExploreScene = {
         ExploreUIHelper.showLootNotification(item, isDeduction);
     },
 
+    draw(ctx, canvas) {
+        ctx.fillStyle = '#0a0806';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (this.bgImage && this.bgImage.complete) {
+            ctx.drawImage(this.bgImage, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(10, 8, 6, 0.72)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    },
+
     destroy() {
         if (this.timer) cancelAnimationFrame(this.timer);
         this.timer = null;
-        
         if (this.handleKeyDown) window.removeEventListener('keydown', this.handleKeyDown);
-        if (this.handleRightClick) window.removeEventListener('mousedown', this.handleRightClick);
 
         document.getElementById('ui-explore').classList.add('hidden');
         document.getElementById('expedition-summary').classList.add('hidden');

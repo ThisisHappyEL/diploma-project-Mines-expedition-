@@ -10,10 +10,20 @@ export class GameState {
     static cycle = 1;
     static resources = { candles: 300 };
     static roster = [];
-    static currentSquad = [];
+    static SQUAD_COLS = 3;
+    static SQUAD_ROWS = 3;
+    static currentSquad = new Array(9).fill(null);
+
+    static getSquadMembers() {
+        return this.currentSquad.filter(Boolean);
+    }
     static inventory = [];
     static activeQuests = [];
     static hasFinishedExpedition = false;
+    static cycleHoursLeft = 24;
+    static maxCycleHours = 24;
+    static currentMine = null;
+    static isExpeditionActive = false;
     static debtCycles = HUB_BALANCE.bankruptcy.cyclesBeforeDefeat;
     static selectedBiome = 'glassForest';
     static expeditionInventory = [];
@@ -35,6 +45,12 @@ export class GameState {
 
     static updateTopBarUI() {
         document.getElementById('ui-cycle').innerText = this.cycle;
+        const hoursEl = document.getElementById('ui-cycle-hours');
+        if (hoursEl) {
+            const h = this.cycleHoursLeft ?? 24;
+            hoursEl.innerText = h;
+            hoursEl.style.color = h <= 0 ? 'var(--color-danger)' : (h <= 6 ? 'var(--color-warning)' : 'var(--color-success)');
+        }
         
         const candlesEl = document.getElementById('ui-candles');
         candlesEl.innerText = this.resources.candles;
@@ -65,7 +81,8 @@ export class GameState {
                               .find(btn => btn.textContent.includes('Клеть') || (btn.id && btn.id.includes('cleat')));
 
         if (cleatBtn) {
-            if (this.hasFinishedExpedition) {
+            const isLocked = this.cycleHoursLeft <= 0;
+            if (isLocked) {
                 cleatBtn.disabled = true;
                 cleatBtn.style.opacity = '0.3';
                 cleatBtn.style.cursor = 'not-allowed';
@@ -74,7 +91,7 @@ export class GameState {
                 const textSpan = cleatBtn.querySelector('span');
                 if (textSpan && !textSpan.dataset.originalText) {
                     textSpan.dataset.originalText = textSpan.innerText;
-                    textSpan.innerText = '🔒 Клеть (Вылазка совершена)';
+                    textSpan.innerText = '🔒 Клеть (0/24ч — завершите цикл)';
                 }
             } else {
                 cleatBtn.disabled = false;

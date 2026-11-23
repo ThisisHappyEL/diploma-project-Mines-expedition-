@@ -1,10 +1,16 @@
 import { EFFECTS } from '../data/battleData/effects.js';
+import { BATTLE_BALANCE } from '../data/balanceFiles/battleBalance.js';
 
 export class Unit {
     constructor(config) {
         this.name = config.name;
         this.side = config.side; 
-        this.posIdx = config.posIdx; 
+        this.posIdx = config.posIdx;
+        this.enemyId = config.enemyId || null;
+        this.gridCol = config.gridCol !== undefined ? config.gridCol : 0;
+        this.gridLane = config.gridLane !== undefined ? config.gridLane : 1;
+        this.attackTimer = 0;
+        this.queuedAction = null;
         
         this.maxHp = Number(config.maxHp) || Number(config.hp) || 40;
         this.hp = Number(config.hp) || this.maxHp;  
@@ -192,23 +198,21 @@ export class Unit {
 
     update() {
         if (this.isDead) return;
-        const baseX = 960, gap = 220, spacing = 160; 
-
-        let slotCenterX = baseX;
-
-        if (!this.isEnvironment) {
-            if (this.side === 'player') {
-                slotCenterX = baseX - gap - ((this.posIdx - 1) * spacing);
-            } else {
-                slotCenterX = baseX + gap + ((this.posIdx - 1) * spacing);
-            }
-        }
+        const layout = BATTLE_BALANCE.gridLayout;
+        const colsX = this.side === 'player' ? layout.playerColsX : layout.enemyColsX;
+        const slotCenterX = colsX[this.gridCol] ?? 960;
+        const slotY = layout.lanesY[this.gridLane] ?? 535;
 
         this.targetX = slotCenterX - (this.width / 2);
-        
-        this.x += (this.targetX - this.x) * 0.1;
+        if (this.x < -50 || this.x > 1970) {
+            this.x = this.targetX;
+            this.y = slotY;
+        } else {
+            this.x += (this.targetX - this.x) * 0.18;
+            this.y += (slotY - this.y) * 0.18;
+        }
         this.offsetX *= 0.8;
-        this.queueYOffset *= 0.8; 
+        this.queueYOffset *= 0.8;
     }
 
     drawBody(ctx, isActiveTurn, isPotentialTarget = false, isHovered = false) {

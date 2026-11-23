@@ -327,7 +327,7 @@ export class BazaarManager {
         else if (isWeapon) folderName = 'weapon/weaponForSale';
         else if (item.type === 'supplies') folderName = 'supplies';  
         
-        const spritePath = `assets/img/${folderName}/${spriteKey}.png`;
+        const spritePath = `assets/img/${folderName}/${spriteKey}.webp`;
 
         let price;
         let actionButtonHTML;
@@ -426,7 +426,7 @@ export class BazaarManager {
                 item.skills.forEach(s => {
                     if (!s) return;
                     const skillKey = s.id || s.key || '';
-                    const iconHtml = skillKey ? `<img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" onerror="this.style.display='none'">` : '';
+                    const iconHtml = skillKey ? `<img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.webp" onerror="this.style.display='none'">` : '';
                     const ttId = TooltipManager.registerTooltip(HubManager.getSkillTooltipHTML(s, item));
                     detailBoxesHtml += `<div class="fr-skill-box" data-tooltip-id="${ttId}">${iconHtml}<span style="position: absolute; z-index: 0;">${s.name}</span></div>`;
                 });

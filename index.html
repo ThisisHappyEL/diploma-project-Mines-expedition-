@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>Litho-Descent</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles/cleat.css">
+    <link rel="stylesheet" href="styles/explore.css">
+    <link rel="stylesheet" href="styles/battle.css">
 </head>
 <body>
     <div id="game-container">
@@ -12,6 +15,7 @@
         <div id="top-bar" class="interactive hidden" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <div style="display: flex; gap: 20px; align-items: center;">
                 <span>Цикл: <span id="ui-cycle">1</span></span>
+                <span>Время цикла: <span id="ui-cycle-hours" style="color: var(--color-success); font-weight: bold;">24</span>/24ч</span>
                 <span>Свечи: <span id="ui-candles" class="resource">0</span> <span id="ui-debt-timer" style="color: var(--color-danger); font-weight: bold; margin-left: 10px; display: none;"></span></span>
                 <span>Авантюристов: <span id="ui-roster-count">0</span></span>
                 <span>Жалование всех погруженцев: <span id="ui-salary" style="color: #ff6666;">0</span></span>
@@ -29,6 +33,7 @@
 
         <div id="ui-hub" class="ui-layer interactive hidden">
             <div id="hub-menu"></div>
+            <div id="hub-expedition-widget" class="hidden"></div>
             <div id="building-ui" class="hidden interactive">
                 <div class="building-header">
                     <div class="title-block">
@@ -159,81 +164,67 @@
         </div>
 
         <div id="ui-explore" class="ui-layer interactive hidden">
-            <div id="rest-aura"></div>
-            <div id="explore-layout">
-                
-                <div id="explore-side">
-                    <div class="explore-card" style="padding: 0; flex: 0 0 auto; max-height: 440px; display: flex; flex-direction: column;">
-                        <div style="padding: 10px 15px; background: rgba(0,0,0,0.8); border-bottom: 1px solid #444; font-weight: bold;">Отряд в пещере</div>
-                        <div id="explore-squad-list" style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+            <div class="explore-v2-container">
+                <div class="explore-surface-zone">
+                    <div class="surface-squad-col">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:12px; font-weight:bold; color:var(--color-gold); text-transform:uppercase; letter-spacing:0.5px;">Смена в шахте (Тыл · Центр · Фронт)</span>
+                            <span id="explore-squad-stats-mini" style="font-size:11px; color:#aaa;"></span>
+                        </div>
+                        <div id="explore-squad-3x3" class="explore-squad-3x3"></div>
                     </div>
-                    
-                    <div class="explore-card" style="padding: 15px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                        <div style="color: #ffbf00; font-size: 16px; margin-bottom: 15px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 1px;">Использующиеся инструменты</div>
-                        <div id="active-tools-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 5px;">
+
+                    <div class="surface-controls-col">
+                        <div class="surface-clock-row">
+                            <div>
+                                <div style="font-size:10px; color:#888; text-transform:uppercase;">Осталось в цикле</div>
+                                <div style="font-size:22px; font-weight:bold; color:var(--color-gold);"><span id="explore-time">24</span> / 24 ч</div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:10px; color:#888; text-transform:uppercase;">Глубина Клети</div>
+                                <div id="explore-depth-val" style="font-size:20px; font-weight:bold; color:#4affab;">1 / 10</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:10px; color:#888; text-transform:uppercase;">Добыто в смене</div>
+                                <div id="explore-loot-count" style="font-size:18px; font-weight:bold; color:#b19cd9;">0 шт.</div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <button id="btn-pause" class="huge-action-btn btn-gold" style="flex:1.2; height:42px; font-size:14px; transform:none; position:relative; overflow:hidden;">
+                                <div id="pause-tick-fill"></div>
+                                <span id="pause-text" style="position:relative; z-index:2;">ПРОДОЛЖИТЬ</span>
+                            </button>
+                            <button id="btn-explore-inv" class="hub-btn" style="height:42px; padding:0 14px; font-size:13px; border-color:var(--color-warning); color:var(--color-warning); position:relative; font-weight:bold;">
+                                🎒 Рюкзак <span id="inv-badge" class="notification-badge hidden" style="position:absolute; top:-8px; right:-6px;">0</span>
+                            </button>
+                            <button id="btn-trigger-battle" class="hub-btn" style="height:42px; padding:0 12px; font-size:12px; border-color:var(--color-danger); color:var(--color-danger); font-weight:bold;">
+                                ⚔️ Бой (Тест)
+                            </button>
+                        </div>
+
+                        <div style="display:flex; gap:8px; position:relative;">
+                            <button id="btn-to-hub-pause" class="huge-action-btn btn-gold" style="flex:1; height:40px; font-size:13px; transform:none;">
+                                🏛️ В ХАБ (-1ч)
+                            </button>
+                            <button id="btn-evacuate" class="huge-action-btn btn-danger" style="flex:1; height:40px; font-size:13px;">
+                                ⬆️ ПОДНЯТЬ КЛЕТЬ (ЗАВЕРШИТЬ СМЕНУ)
+                            </button>
+                            <div id="loot-toast-container" style="bottom:48px; left:0;"></div>
                         </div>
                     </div>
                 </div>
 
-                <div id="explore-main">
-                    <div class="tubes-container" id="tubes-inject-zone" style="flex: 1; overflow-y: auto; padding-right: 15px;">
+                <div class="explore-shaft-zone">
+                    <div class="shaft-col-headers">
+                        <div style="color:#888;">Глубина</div>
+                        <div style="color:#b19cd9;">⬅️ Западный штрек</div>
+                        <div style="color:var(--color-gold);">⬇️ Ствол Клети (Прорыв)</div>
+                        <div style="color:#4affab;">➡️ Восточный штрек</div>
                     </div>
-
-                    <div id="explore-bottom-panel" class="explore-bottom-actions">
-                        <div class="bottom-action-group" style="align-items: center;">
-                            <button id="btn-evacuate" class="huge-action-btn btn-danger">ПОКИНУТЬ ПЕЩЕРУ</button>
-                            <button id="btn-rest" class="huge-action-btn btn-success">ОТДЫХ (ПРИВАЛ)</button>
-                            
-                            <div style="position: relative;">
-                                <button id="btn-explore-inv" class="huge-action-btn btn-warning">ИНВЕНТАРЬ</button>
-                                <div id="inv-badge" class="notification-badge hidden" style="position: absolute; top: -10px; right: -10px;">0</div>
-                                <div id="loot-toast-container"></div>
-                            </div>
-
-                            <div style="position: relative;">
-                                <button id="btn-trigger-battle" class="huge-action-btn btn-danger" style="border-color: #ff4444; font-weight: bold; width: 140px;">БИТВА ⚔️</button>
-                                <div id="battle-toast-container" style="position: absolute; bottom: 65px; left: 0; pointer-events: none; z-index: 200; width: 250px;"></div>
-                            </div>
-
-                            <div class="priority-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 320px; margin-left: 10px;">
-                                <button class="prio-grid-btn" data-type="mining">Приоритет ⛏️</button>
-                                <button class="prio-grid-btn" data-type="research">Приоритет 📚</button>
-                                <button class="prio-grid-btn" data-type="construction">Приоритет 🔨</button>
-                                <button class="prio-grid-btn" data-type="scouting">Приоритет 🪔</button>
-                            </div>
-                        </div>
-
-                        <div class="bottom-action-group" style="margin-right: 220px;">
-                            <div style="display: flex; gap: 20px; align-items: flex-end;">
-                                <div class="pace-dropup">
-                                    <span class="pace-dropup-label">Темп работы</span>
-                                    <button class="huge-action-btn btn-gold" id="btn-pace-current" style="width: 140px;">НОРМ</button>
-                                    <div class="pace-dropup-content">
-                                        <button class="pace-select-btn" data-pace="slow">ТИХО</button>
-                                        <button class="pace-select-btn" data-pace="normal">НОРМ</button>
-                                        <button class="pace-select-btn" data-pace="fast">СПЕШКА</button>
-                                    </div>
-                                </div>
-
-                                <div style="position: relative;">
-                                    <div id="pause-indicator" class="hidden pulse-text" style="color: #ff4444; font-size: 18px; font-weight: bold; text-shadow: 2px 2px 4px #000; letter-spacing: 2px; position: absolute; top: -30px; white-space: nowrap;">ОСТАНОВЛЕНО</div>
-                                    <button id="btn-pause" class="huge-action-btn btn-gold" style="width: 150px;">
-                                        <span id="pause-text">ПАУЗА</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <span class="time-display-sun">🕒 ВРЕМЯ: <span id="explore-time">0</span> / 12ч</span>
-
-                    <div id="tick-timer-wrap">
-                        <div id="tick-timer-bar"></div>
-                        <span id="tick-label">ЧАС</span>
-                    </div>
+                    <div id="shaft-scroll-body" class="shaft-scroll-body"></div>
                 </div>
             </div>
-            
             <div id="explore-inv-modal" class="hidden interactive modal-overlay" style="z-index: 150;">
                 <div class="modal-container" style="width: 900px; height: 600px; border-color: #ffaa44;">
                     <div class="modal-header">

@@ -98,7 +98,7 @@ export const BattleUIManager = {
             if (!scene.iconCache) scene.iconCache = {}; 
             
             if (scene.iconCache[skill.id] === true) {
-                btn.innerHTML = `<img src="assets/img/weaponSkillsIcons/${skill.id}.png" style="width:100%; height:100%; object-fit:cover; pointer-events:none; display:block;" />`;
+                btn.innerHTML = `<img src="assets/img/weaponSkillsIcons/${skill.id}.webp" style="width:100%; height:100%; object-fit:cover; pointer-events:none; display:block;" />`;
                 btn.style.padding = '0'; 
                 btn.style.overflow = 'visible';
                 btn.style.backgroundColor = '#000'; 
@@ -119,7 +119,7 @@ export const BattleUIManager = {
                         this.updateSkillsPanel(scene, activeUnit, skills, manager); 
                     };
                     img.onerror = () => { scene.iconCache[skill.id] = false; };
-                    img.src = `assets/img/weaponSkillsIcons/${skill.id}.png`; 
+                    img.src = `assets/img/weaponSkillsIcons/${skill.id}.webp`; 
                 }
             }
             

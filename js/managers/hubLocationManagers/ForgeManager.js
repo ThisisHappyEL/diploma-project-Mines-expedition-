@@ -201,7 +201,7 @@ export class ForgeManager {
 
         const spriteKey = item.key || item.name;
         const folderName = isArmor ? 'outfit/outfitsForSale' : 'weapon/weaponForSale';
-        const spritePath = `assets/img/${folderName}/${spriteKey}.png`;
+        const spritePath = `assets/img/${folderName}/${spriteKey}.webp`;
 
         let actionButtonHTML;
 
@@ -257,7 +257,7 @@ export class ForgeManager {
                 item.skills.forEach(s => {
                     if (!s) return;
                     const skillKey = s.id || s.key || '';
-                    const iconHtml = skillKey ? `<img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" onerror="this.style.display='none'">` : '';
+                    const iconHtml = skillKey ? `<img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.webp" onerror="this.style.display='none'">` : '';
                     const ttId = TooltipManager.registerTooltip(HubManager.getSkillTooltipHTML(s, item));
                     detailBoxesHtml += `<div class="fr-skill-box" data-tooltip-id="${ttId}">${iconHtml}<span style="position: absolute; z-index: 0;">${s.name}</span></div>`;
                 });
@@ -318,7 +318,7 @@ export class ForgeManager {
             
             const spriteKey = variant.key || variant.name;
             const folderName = isArmor ? 'outfit/outfitsForSale' : 'weapon/weaponForSale';
-            const spritePath = `assets/img/${folderName}/${spriteKey}.png`;
+            const spritePath = `assets/img/${folderName}/${spriteKey}.webp`;
             
             let detailsHtml = '';
             if (isArmor) {
@@ -335,7 +335,7 @@ export class ForgeManager {
                     const ttId = TooltipManager.registerTooltip(HubManager.getSkillTooltipHTML(s, variant));
                     if (skillKey) {
                         detailsHtml += `
-                            <div class="fr-skill-box skill-icon-only" style="margin:2px;" data-tooltip-id="${ttId}"><img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.png" onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='flex';"></div>
+                            <div class="fr-skill-box skill-icon-only" style="margin:2px;" data-tooltip-id="${ttId}"><img class="skill-icon-img" src="assets/img/weaponSkillsIcons/${skillKey}.webp" onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='flex';"></div>
                             <div class="fr-skill-box text-fallback" style="display:none; margin:2px;" data-tooltip-id="${ttId}"><span>${s.name}</span></div>
                         `;
                     } else {
